@@ -151,6 +151,32 @@ class ProjectPathsTest < Minitest::Test
   end
 
   # ─────────────────────────────────────────────────────────────
+  # Templates Detection
+  # ─────────────────────────────────────────────────────────────
+
+  def test_templates_returns_templates_in_simple_mode
+    assert_equal File.join(@tmpdir, "templates"), @prj.templates.to_s
+  end
+
+  def test_templates_returns_dx_templates_in_organized_mode
+    FileUtils.mkdir_p(File.join(@tmpdir, ".dx"))
+    assert_equal File.join(@tmpdir, ".dx", "templates"), @prj.templates.to_s
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # Hooks Detection
+  # ─────────────────────────────────────────────────────────────
+
+  def test_hooks_returns_hooks_in_simple_mode
+    assert_equal File.join(@tmpdir, "hooks"), @prj.hooks.to_s
+  end
+
+  def test_hooks_returns_dx_hooks_in_organized_mode
+    FileUtils.mkdir_p(File.join(@tmpdir, ".dx"))
+    assert_equal File.join(@tmpdir, ".dx", "hooks"), @prj.hooks.to_s
+  end
+
+  # ─────────────────────────────────────────────────────────────
   # Organized Mode Detection
   # ─────────────────────────────────────────────────────────────
 

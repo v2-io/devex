@@ -62,11 +62,11 @@ File: `lib/devex/support/core_ext.rb`
 
 ## Priority 3: ADR-003 Directory Context Gaps
 
-### [ ] Add `prj.hooks` to CONVENTIONS
+### [x] Add `prj.hooks` to CONVENTIONS (DONE)
 - For organized mode: `.dx/hooks/`
 - File: `lib/devex/project_paths.rb`
 
-### [ ] Add `prj.templates` to CONVENTIONS
+### [x] Add `prj.templates` to CONVENTIONS (DONE)
 - Simple mode: `templates/`
 - Organized mode: `.dx/templates/`
 - File: `lib/devex/project_paths.rb`

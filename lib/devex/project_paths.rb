@@ -34,6 +34,8 @@ module Devex
       dx:             ".dx",
       config:         :detect_config,
       tools:          :detect_tools,
+      templates:      :detect_templates,
+      hooks:          :detect_hooks,
       lib:            "lib",
       src:            "src",
       bin:            "bin",
@@ -146,6 +148,23 @@ module Devex
         @root / ".dx" / "tools"
       else
         @root / "tools"
+      end
+    end
+
+    def detect_templates
+      if organized_mode?
+        @root / ".dx" / "templates"
+      else
+        @root / "templates"
+      end
+    end
+
+    def detect_hooks
+      if organized_mode?
+        @root / ".dx" / "hooks"
+      else
+        # In simple mode, hooks are less common; still provide the path
+        @root / "hooks"
       end
     end
 
