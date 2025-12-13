@@ -84,21 +84,37 @@ module Devex
     end
 
     # Get the tools directory for a project root
-    # Reads from .dx.yml if present, otherwise uses default
+    # Reads from .dx.yml or .dx/config.yml if present, otherwise uses default
     def tools_dir(project_root)
       return nil unless project_root
 
-      config_file = File.join(project_root, ".dx.yml")
-      if File.exist?(config_file)
-        require "yaml"
-        config = YAML.safe_load(File.read(config_file)) || {}
-        tools_dir_name = config["tools_dir"] || DEFAULT_TOOLS_DIR
-      else
-        tools_dir_name = DEFAULT_TOOLS_DIR
-      end
+      config = load_config(project_root)
+      tools_dir_name = config["tools_dir"] || DEFAULT_TOOLS_DIR
 
       dir = File.join(project_root, tools_dir_name)
       File.directory?(dir) ? dir : nil
+    end
+
+    # Load project configuration from .dx.yml or .dx/config.yml
+    # Returns empty hash if no config file exists
+    def load_config(project_root)
+      return {} unless project_root
+
+      dx_dir = File.join(project_root, ".dx")
+      dx_yml = File.join(project_root, ".dx.yml")
+
+      config_file = if File.directory?(dx_dir)
+                      File.join(dx_dir, "config.yml")
+                    else
+                      dx_yml
+                    end
+
+      if File.exist?(config_file)
+        require "yaml"
+        YAML.safe_load(File.read(config_file)) || {}
+      else
+        {}
+      end
     end
   end
 end
