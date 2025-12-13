@@ -1,0 +1,15 @@
+{
+  "anuppuccin-theme-settings@@anuppuccin-theme-dark": "ctp-macchiato",
+  "anuppuccin-theme-settings@@anuppuccin-light-theme-accents": "ctp-accent-light-rosewater",
+  "anuppuccin-theme-settings@@anuppuccin-theme-accents": "ctp-accent-teal",
+  "anuppuccin-theme-settings@@anp-button-metadata-toggle": true,
+  "anuppuccin-theme-settings@@anp-print": true,
+  "anuppuccin-theme-settings@@anp-autohide-titlebar": true,
+  "anuppuccin-theme-settings@@anp-toggle-metadata": false,
+  "anuppuccin-theme-settings@@anp-alt-rainbow-style": "anp-full-rainbow-color-toggle",
+  "anuppuccin-theme-settings@@anp-header-color-toggle": true,
+  "anuppuccin-theme-settings@@anp-header-margin-toggle": true,
+  "anuppuccin-theme-settings@@anp-header-divider-color-toggle": true,
+  "anuppuccin-theme-settings@@anp-decoration-toggle": true,
+  "anuppuccin-theme-settings@@anp-header-margin-value": 8
+}
