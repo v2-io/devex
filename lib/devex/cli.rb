@@ -15,6 +15,11 @@ module Devex
       color: ["--color=MODE"]
     }.freeze
 
+    # Project operation flag (shown in help)
+    PROJECT_FLAGS = {
+      dx_from_dir: ["--dx-from-dir=PATH"]
+    }.freeze
+
     # Hidden debug flags for testing/reproduction (not shown in help)
     # These set Context overrides directly
     DEBUG_FLAGS = {
@@ -285,6 +290,7 @@ module Devex
           --no-color            Disable colored output
           --color=MODE          Color mode: auto, always, never
           --dx-version          Show devex gem version
+          --dx-from-dir=PATH    Operate on project at PATH
       HELP
     end
 

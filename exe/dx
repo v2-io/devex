@@ -3,6 +3,30 @@
 
 require_relative "../lib/devex"
 
+# Extract --dx-from-dir before project discovery
+# This flag affects where we look for the project root
+argv = ARGV.dup
+from_dir = nil
+argv.reject! do |arg|
+  if arg.start_with?("--dx-from-dir=")
+    from_dir = arg.split("=", 2).last
+    true
+  elsif arg == "--dx-from-dir" && argv.index(arg) < argv.size - 1
+    # Handle --dx-from-dir PATH (space-separated)
+    idx = argv.index(arg)
+    from_dir = argv[idx + 1]
+    argv.delete_at(idx + 1) rescue nil
+    true
+  else
+    false
+  end
+end
+
+# Set dest_dir if --dx-from-dir was provided
+if from_dir
+  Devex::Dirs.dest_dir = File.expand_path(from_dir)
+end
+
 cli = Devex::CLI.new(executable_name: "dx")
 
 # Load built-in tools
@@ -16,4 +40,4 @@ cli.load_project_tools(project_root) if project_root
 cli.merge_builtins
 
 # Run
-exit cli.run(ARGV)
+exit cli.run(argv)

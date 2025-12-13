@@ -12,7 +12,7 @@ Updated: 2025-12-13
 - Need tests that verify call tree propagation (`DX_CALL_TREE`)
 - File: `test/devex/exec_test.rb`
 
-### [ ] Implement `--dx-from-dir` flag
+### [x] Implement `--dx-from-dir` flag (DONE)
 - ADR-003 specifies this flag for agents to operate on projects remotely
 - `Dirs.dest_dir=` method exists but cli.rb doesn't parse the flag
 - Files: `lib/devex/cli.rb`, `exe/dx`

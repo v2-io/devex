@@ -8,6 +8,7 @@ require_relative "devex/tool"
 require_relative "devex/dsl"
 require_relative "devex/loader"
 require_relative "devex/cli"
+require_relative "devex/dirs"
 
 module Devex
   class Error < StandardError; end
