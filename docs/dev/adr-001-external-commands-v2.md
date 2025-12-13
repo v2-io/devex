@@ -322,7 +322,7 @@ end
 
 ### Configuration
 
-In `.devex.yml`:
+In `.dx.yml`:
 
 ```yaml
 exec:

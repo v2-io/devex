@@ -84,7 +84,7 @@ These are set once at dx startup and never change:
 ```ruby
 invoked_dir     # Where user actually ran `dx` (real cwd at startup)
 dest_dir        # = invoked_dir, or --dx-from-dir override
-project_dir     # Discovered project root (has .git, .devex.yml, etc.)
+project_dir     # Discovered project root (has .git, .dx.yml, etc.)
 dx_src_dir      # Devex gem installation (for templates, builtins)
 ```
 
@@ -104,7 +104,7 @@ This allows `dx` to operate on a project without being invoked from within it. A
 
 ```
 dest_dir
-  └── Look for .devex.yml, .git, Gemfile, etc.
+  └── Look for .dx.yml, .git, Gemfile, etc.
       └── Found? → project_dir = that directory
       └── Not found? → Check parent directory
           └── Reached filesystem root? → FFF error
@@ -119,7 +119,7 @@ Access conventional project locations via the `prj` object:
 ```ruby
 prj.root        # Project root directory
 prj.git         # .git/
-prj.config      # .devex.yml
+prj.config      # .dx.yml or .dx/config.yml
 prj.tools       # tools/ (dx tool definitions)
 prj.lib         # lib/
 prj.src         # src/
@@ -211,7 +211,7 @@ ERROR: Project test directory not found
   Looked for: test/, spec/, tests/
   Project root: /Users/joseph/src/myproject
 
-  To configure a custom location, add to .devex.yml:
+  To configure a custom location, add to .dx.yml:
     paths:
       test: your/test/dir/
 
@@ -222,7 +222,7 @@ Exit code: 78 (EX_CONFIG)
 
 ### Configuration Override
 
-In `.devex.yml`:
+In `.dx.yml`:
 
 ```yaml
 paths:

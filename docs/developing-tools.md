@@ -322,7 +322,7 @@ Devex::Dirs.dx_src_dir     # => Path
 Devex::Dirs.in_project?    # => true/false
 ```
 
-Project markers searched (in order): `.dx.yml`, `.dx/`, `.git`, `Gemfile`, `Rakefile`, `.devex.yml`
+Project markers searched (in order): `.dx.yml`, `.dx/`, `.git`, `Gemfile`, `Rakefile`
 
 ### Project Paths (`Devex::ProjectPaths`)
 
@@ -744,7 +744,7 @@ Devex::Support::ANSI.enable!
 
 ```ruby
 def run
-  cli.project_root      # Path to project root (where .devex.yml or .git is)
+  cli.project_root      # Path to project root (where .dx.yml or .git is)
   cli.executable_name   # "dx"
 end
 ```

@@ -95,7 +95,7 @@ Zero dependencies. Full understanding. Exactly what we need.
 
 ### 5. Configuration
 
-- Where does devex look for project config? `.devex.yml`? `devex.rb`?
+- Where does devex look for project config? `.dx.yml`? `devex.rb`?
 - What's configurable? Task directory name, built-in task behavior, etc.
 
 ## Implementation Notes

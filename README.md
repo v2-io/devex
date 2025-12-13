@@ -87,7 +87,7 @@ Access as: `dx db migrate`, `dx db seed`
 
 ## Configuration
 
-Create `.devex.yml` in your project root:
+Create `.dx.yml` in your project root:
 
 ```yaml
 # Custom tools directory (default: tools)

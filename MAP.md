@@ -145,11 +145,11 @@ OptionParser for flag parsing. No toys, thor, dry-cli, etc.
 
 `exe/dx` is the entry point. It:
 1. Finds project root by walking up from cwd looking for (in order):
-   - `.devex.yml` (config file, can specify custom tools dir)
+   - `.dx.yml` (config file, can specify custom tools dir)
    - `.git` (git repository root)
    - `tools/` directory
 2. Loads built-in tools from gem
-3. Loads project tools from `tools/` (or configured dir from `.devex.yml`)
+3. Loads project tools from `tools/` (or configured dir from `.dx.yml`)
 4. Parses ARGV and dispatches
 
 If no project root found, still runs with just built-in tasks.
@@ -163,7 +163,7 @@ File structure maps to command structure:
 
 ## Open Questions
 
-- Should there be a `.devex.yml` config file? Or just conventions?
+- Should there be a `.dx.yml` config file? Or just conventions?
 - How to handle task file naming collisions (built-in vs project)?
 - Version flag: `-v` or `--version` at root level?
 

@@ -106,7 +106,7 @@ Devex distinguishes between:
    - `lib/devex/builtins/` - Built-in commands
 
 2. **Project root** (`cli.project_root`) - The user's project
-   - Detected by `.devex.yml`, `.git`, or `tools/` directory
+   - Detected by `.dx.yml`, `.git`, or `tools/` directory
    - `tools/` - User's custom commands
 
 Templates are always loaded from the gem; tasks can be loaded from both.

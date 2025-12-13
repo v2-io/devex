@@ -13,7 +13,7 @@ module Devex
   class Error < StandardError; end
 
   # Project root markers, checked in order
-  ROOT_MARKERS = %w[.devex.yml .git tools].freeze
+  ROOT_MARKERS = %w[.dx.yml .dx .git tools].freeze
 
   # Default tools directory name
   DEFAULT_TOOLS_DIR = "tools"
@@ -60,7 +60,7 @@ module Devex
       File.join(templates_path, name)
     end
     # Find the project root by walking up from the given directory
-    # looking for root markers (.devex.yml, .git, tools/)
+    # looking for root markers (.dx.yml, .git, tools/)
     #
     # Returns [root_path, marker_found] or [nil, nil] if not found
     def find_project_root(from = Dir.pwd)
@@ -84,11 +84,11 @@ module Devex
     end
 
     # Get the tools directory for a project root
-    # Reads from .devex.yml if present, otherwise uses default
+    # Reads from .dx.yml if present, otherwise uses default
     def tools_dir(project_root)
       return nil unless project_root
 
-      config_file = File.join(project_root, ".devex.yml")
+      config_file = File.join(project_root, ".dx.yml")
       if File.exist?(config_file)
         require "yaml"
         config = YAML.safe_load(File.read(config_file)) || {}
