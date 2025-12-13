@@ -1,0 +1,24 @@
+<%= heading "Context Detection" %>
+
+<%= c :header, "TTY Detection:" %>
+  stdout.tty?     = <%= c(tty[:stdout] ? :success : :muted, tty[:stdout]) %>
+  stderr.tty?     = <%= c(tty[:stderr] ? :success : :muted, tty[:stderr]) %>
+  stdin.tty?      = <%= c(tty[:stdin] ? :success : :muted, tty[:stdin]) %>
+  terminal?       = <%= c(tty[:terminal] ? :success : :muted, tty[:terminal]) %>
+
+<%= c :header, "Streams:" %>
+  streams_merged? = <%= c(streams[:merged] ? :warning : :muted, streams[:merged]) %>
+  piped?          = <%= c(streams[:piped] ? :info : :muted, streams[:piped]) %>
+
+<%= c :header, "Environment:" %>
+  ci?             = <%= c(environment[:ci] ? :info : :muted, environment[:ci]) %>
+  env             = <%= c :emphasis, environment[:env] %>
+  agent_mode_env? = <%= c(environment[:agent_mode_env] ? :warning : :muted, environment[:agent_mode_env]) %>
+
+<%= c :header, "Detection:" %>
+  agent_mode?     = <%= c(detection[:agent_mode] ? :warning : :success, detection[:agent_mode]) %>
+  interactive?    = <%= c(detection[:interactive] ? :success : :muted, detection[:interactive]) %>
+  color?          = <%= c(detection[:color] ? :success : :muted, detection[:color]) %>
+
+<%= muted "Call Tree: #{call_tree.inspect}" %>
+<%= muted "Overrides: #{overrides.inspect}" %>

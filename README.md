@@ -2,36 +2,149 @@
 
 # Devex
 
-TODO: Delete this and the text below, and describe your gem
+A lightweight, zero-heavy-dependency Ruby CLI providing a unified `dx` command for common development tasks. Projects can extend with local tasks. Clean-room implementation inspired by toys-core patterns.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/devex`. To experiment with that code, run `bin/console` for an interactive prompt.
+## Vision
+
+- **Single entry point**: `dx` command for all dev tasks
+- **Zero heavy dependencies**: Core depends only on Ruby stdlib + paint + tty-prompt
+- **Project-local tasks**: Override or extend built-ins with `tasks/*.rb`
+- **Agent-aware**: Automatically detects AI agent invocation and adapts output
+- **Environment-aware**: Rails-style environment detection (dev/test/staging/prod)
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
-
-Install the gem and add to the application's Gemfile by executing:
-
 ```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+gem install devex
 ```
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+Or add to your Gemfile:
 
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+```ruby
+gem "devex"
 ```
 
 ## Usage
 
-TODO: Write usage instructions here
+```bash
+# Show available commands
+dx help
+
+# Show/manage version
+dx version
+dx version bump patch
+dx version set 2.0.0
+
+# With JSON output (auto-detected in agent mode)
+dx version --format=json
+```
+
+## Project-Local Tasks
+
+Create a `tasks/` directory in your project root with Ruby files:
+
+```ruby
+# tasks/deploy.rb
+desc "Deploy to production"
+flag :dry_run, "-n", "--dry-run", desc: "Show what would be deployed"
+
+def run
+  if dry_run
+    puts "Would deploy..."
+  else
+    # actual deployment
+  end
+end
+```
+
+Then run: `dx deploy` or `dx deploy --dry-run`
+
+### Nested Tools
+
+```ruby
+# tasks/db.rb
+desc "Database operations"
+
+tool "migrate" do
+  desc "Run migrations"
+  def run
+    # ...
+  end
+end
+
+tool "seed" do
+  desc "Seed the database"
+  def run
+    # ...
+  end
+end
+```
+
+Access as: `dx db migrate`, `dx db seed`
+
+## Configuration
+
+Create `.devex.yml` in your project root:
+
+```yaml
+# Custom tasks directory (default: tasks)
+tasks_dir: dev/tasks
+```
+
+## Global Options
+
+```bash
+dx --help                    # Show help with global options
+dx --dx-version              # Show devex gem version
+dx -f json version           # Output in JSON format
+dx --format=yaml version     # Output in YAML format
+dx -v version                # Verbose mode
+dx -q version                # Quiet mode
+dx --no-color version        # Disable colors
+dx --color=always version    # Force colors
+```
+
+## Environment Variables
+
+- `DX_ENV` / `DEVEX_ENV` - Set environment (development, test, staging, production)
+- `DX_AGENT_MODE=1` - Force agent mode (structured output, no colors)
+- `DX_INTERACTIVE=1` - Force interactive mode
+- `NO_COLOR=1` - Disable colored output
+- `FORCE_COLOR=1` - Force colored output
+
+## Debug Flags
+
+Hidden flags for testing and bug reproduction (not shown in `--help`):
+
+```bash
+dx --dx-agent-mode version      # Force agent mode
+dx --dx-no-agent-mode version   # Force interactive mode
+dx --dx-env=production version  # Force environment
+dx --dx-terminal version        # Force terminal detection
+```
+
+## Built-in Commands
+
+- `dx version` - Show project version
+- `dx version bump <major|minor|patch>` - Bump semantic version
+- `dx version set <version>` - Set explicit version
+
+More built-ins planned: `test`, `lint`, `format`, `types`, `pre-commit`, `gem`
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+```bash
+bundle install
+bundle exec rake test
+bundle exec exe/dx --help
+```
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+## Documentation
 
-## Contributing
+- **[Developing Tools](docs/developing-tools.md)** - How to create tools, available interfaces, best practices
+- **[CLAUDE.md](CLAUDE.md)** - Architecture overview for contributors
+- **[OUTLINE.md](OUTLINE.md)** - Feature comparison with toys-core and Rake
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/devex.
+## License
+
+MIT

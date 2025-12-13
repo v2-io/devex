@@ -330,5 +330,39 @@ module Devex
     def exit(code = 0)
       Kernel.exit(code)
     end
+
+    # --- Global options access ---
+
+    # Access CLI's global options
+    def global_options
+      cli.global_options
+    end
+
+    # Is verbose mode enabled? Returns verbosity level (0 = off, 1+ = on)
+    def verbose
+      global_options[:verbose]
+    end
+
+    def verbose?
+      verbose > 0
+    end
+
+    # Is quiet mode enabled?
+    def quiet?
+      global_options[:quiet]
+    end
+
+    # Get the effective output format
+    # Tool's --format flag takes precedence, then global --format, then context-based default
+    def output_format
+      # Tool-specific format (from options[:format]) takes precedence
+      return options[:format].to_sym if options[:format]
+
+      # Global format
+      return global_options[:format].to_sym if global_options[:format]
+
+      # Context-based default
+      Devex::Context.agent_mode? ? :json : :text
+    end
   end
 end
