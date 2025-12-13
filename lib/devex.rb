@@ -97,13 +97,32 @@ module Devex
 
     # Load project configuration from .dx.yml or .dx/config.yml
     # Returns empty hash if no config file exists
+    # Raises Error if both .dx.yml and .dx/ directory exist (conflict)
     def load_config(project_root)
       return {} unless project_root
 
       dx_dir = File.join(project_root, ".dx")
       dx_yml = File.join(project_root, ".dx.yml")
 
-      config_file = if File.directory?(dx_dir)
+      dx_dir_exists = File.directory?(dx_dir)
+      dx_yml_exists = File.exist?(dx_yml)
+
+      # Conflict check: both simple and organized mode markers present
+      if dx_dir_exists && dx_yml_exists
+        raise Error, <<~ERR.chomp
+          Conflicting dx configuration
+
+            Found both:
+              .dx.yml   (simple mode config)
+              .dx/      (organized mode directory)
+
+            Choose one:
+              • Remove .dx.yml to use organized mode (.dx/config.yml)
+              • Remove .dx/ directory to use simple mode (.dx.yml)
+        ERR
+      end
+
+      config_file = if dx_dir_exists
                       File.join(dx_dir, "config.yml")
                     else
                       dx_yml
