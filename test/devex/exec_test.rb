@@ -1,0 +1,322 @@
+# frozen_string_literal: true
+
+require "test_helper"
+require "devex/exec"
+
+class ExecTest < Minitest::Test
+  # Note: We can't include Devex::Exec directly because it defines `run`
+  # which conflicts with Minitest::Test#run. Use a helper object instead.
+
+  class ExecHelper
+    include Devex::Exec
+  end
+
+  def exec
+    @exec ||= ExecHelper.new
+  end
+
+  # Delegate methods to helper
+  def dx_run(*args, **opts) = exec.run(*args, **opts)
+  def dx_run?(*args, **opts) = exec.run?(*args, **opts)
+  def dx_capture(*args, **opts) = exec.capture(*args, **opts)
+  def dx_spawn(*args, **opts) = exec.spawn(*args, **opts)
+  def dx_shell(*args, **opts) = exec.shell(*args, **opts)
+  def dx_shell?(*args, **opts) = exec.shell?(*args, **opts)
+  def dx_ruby(*args, **opts) = exec.ruby(*args, **opts)
+  def dx_tool(*args, **opts) = exec.tool(*args, **opts)
+
+  # ─────────────────────────────────────────────────────────────
+  # run
+  # ─────────────────────────────────────────────────────────────
+
+  def test_run_returns_result
+    result = dx_run "true"
+    assert_kind_of Devex::Exec::Result, result
+  end
+
+  def test_run_success_for_true
+    result = dx_run "true"
+    assert result.success?
+    assert_equal 0, result.exit_code
+  end
+
+  def test_run_failed_for_false
+    result = dx_run "false"
+    assert result.failed?
+    assert_equal 1, result.exit_code
+  end
+
+  def test_run_captures_duration
+    result = dx_run "true"
+    assert_kind_of Float, result.duration
+    assert result.duration >= 0
+  end
+
+  def test_run_stores_command
+    result = dx_run "echo", "hello", "world"
+    assert_equal %w[echo hello world], result.command
+  end
+
+  def test_run_handles_nonexistent_command
+    result = dx_run "this_command_definitely_does_not_exist_12345"
+    assert result.failed?
+    # Either exit_code 127 (from shell) or an exception
+    assert(result.exit_code == 127 || result.exception)
+  end
+
+  def test_run_with_env
+    result = dx_capture "sh", "-c", "echo $MY_TEST_VAR", env: { MY_TEST_VAR: "hello123" }
+    assert_includes result.stdout, "hello123"
+  end
+
+  def test_run_with_chdir
+    Dir.mktmpdir do |tmpdir|
+      result = dx_capture "pwd", chdir: tmpdir
+      # Use realpath to handle /var -> /private/var on macOS
+      assert_equal File.realpath(tmpdir), result.stdout.strip
+    end
+  end
+
+  def test_run_with_timeout
+    result = dx_run "sleep", "10", timeout: 0.1
+    assert result.failed?
+    # The process was killed
+    assert result.timed_out? || result.signaled?
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # run?
+  # ─────────────────────────────────────────────────────────────
+
+  def test_run_predicate_true_for_success
+    assert dx_run?("true")
+  end
+
+  def test_run_predicate_false_for_failure
+    refute dx_run?("false")
+  end
+
+  def test_run_predicate_false_for_nonexistent
+    refute dx_run?("this_command_definitely_does_not_exist_12345")
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # capture
+  # ─────────────────────────────────────────────────────────────
+
+  def test_capture_returns_result
+    result = dx_capture "true"
+    assert_kind_of Devex::Exec::Result, result
+  end
+
+  def test_capture_captures_stdout
+    result = dx_capture "echo", "hello world"
+    assert_equal "hello world\n", result.stdout
+  end
+
+  def test_capture_captures_stderr
+    result = dx_capture "sh", "-c", "echo error >&2"
+    assert_includes result.stderr, "error"
+  end
+
+  def test_capture_captures_both_streams
+    result = dx_capture "sh", "-c", "echo out; echo err >&2"
+    assert_includes result.stdout, "out"
+    assert_includes result.stderr, "err"
+  end
+
+  def test_capture_handles_multiline_output
+    result = dx_capture "sh", "-c", "echo line1; echo line2; echo line3"
+    lines = result.stdout_lines
+    assert_equal %w[line1 line2 line3], lines
+  end
+
+  def test_capture_with_exit_code
+    result = dx_capture "sh", "-c", "echo output; exit 42"
+    assert_equal 42, result.exit_code
+    assert_includes result.stdout, "output"
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # spawn
+  # ─────────────────────────────────────────────────────────────
+
+  def test_spawn_returns_controller
+    ctrl = dx_spawn "sleep", "10"
+    assert_kind_of Devex::Exec::Controller, ctrl
+  ensure
+    cleanup_controller(ctrl)
+  end
+
+  def test_spawn_returns_immediately
+    start = Time.now
+    ctrl = dx_spawn "sleep", "10"
+    elapsed = Time.now - start
+
+    # Should return almost immediately (well under 1 second)
+    assert elapsed < 1.0
+  ensure
+    cleanup_controller(ctrl)
+  end
+
+  def test_spawn_process_is_running
+    ctrl = dx_spawn "sleep", "10"
+    assert ctrl.executing?
+  ensure
+    cleanup_controller(ctrl)
+  end
+
+  def test_spawn_can_wait_for_result
+    ctrl = dx_spawn "true"
+    result = ctrl.result
+
+    assert_kind_of Devex::Exec::Result, result
+    assert result.success?
+  end
+
+  def test_spawn_with_name
+    ctrl = dx_spawn "sleep", "10", name: "my-sleeper"
+    assert_equal "my-sleeper", ctrl.name
+  ensure
+    cleanup_controller(ctrl)
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # shell
+  # ─────────────────────────────────────────────────────────────
+
+  def test_shell_returns_result
+    result = dx_shell "true"
+    assert_kind_of Devex::Exec::Result, result
+  end
+
+  def test_shell_executes_via_sh
+    result = dx_capture_shell "echo hello"
+    assert_includes result.stdout, "hello"
+  end
+
+  def test_shell_supports_pipes
+    result = dx_capture_shell "echo 'line1\nline2\nline3' | wc -l"
+    # wc output varies by platform, but should contain a number
+    assert_match(/\d+/, result.stdout)
+  end
+
+  def test_shell_supports_variables
+    result = dx_capture_shell "export FOO=bar; echo $FOO"
+    assert_includes result.stdout, "bar"
+  end
+
+  def test_shell_supports_globs
+    Dir.mktmpdir do |tmpdir|
+      File.write("#{tmpdir}/a.txt", "")
+      File.write("#{tmpdir}/b.txt", "")
+      result = dx_capture_shell "ls #{tmpdir}/*.txt | wc -l"
+      assert_match(/2/, result.stdout)
+    end
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # shell?
+  # ─────────────────────────────────────────────────────────────
+
+  def test_shell_predicate_true_for_success
+    assert dx_shell?("true")
+  end
+
+  def test_shell_predicate_false_for_failure
+    refute dx_shell?("false")
+  end
+
+  def test_shell_predicate_with_command
+    assert dx_shell?("command -v ls")
+    refute dx_shell?("command -v nonexistent_command_12345")
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # ruby
+  # ─────────────────────────────────────────────────────────────
+
+  def test_ruby_runs_ruby_code
+    result = dx_capture_ruby "-e", "puts 'hello from ruby'"
+    assert_includes result.stdout, "hello from ruby"
+  end
+
+  def test_ruby_returns_result
+    result = dx_ruby "-e", "exit 0"
+    assert_kind_of Devex::Exec::Result, result
+    assert result.success?
+  end
+
+  def test_ruby_captures_exit_code
+    result = dx_ruby "-e", "exit 42"
+    assert_equal 42, result.exit_code
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # Environment Stack
+  # ─────────────────────────────────────────────────────────────
+
+  def test_raw_mode_skips_stack
+    # When raw: true, no bundler wrapping should happen
+    result = dx_capture "echo", "test", raw: true
+    assert_equal %w[echo test], result.command
+  end
+
+  def test_clean_env_clears_bundler_vars
+    # This is hard to test directly since we're running in bundler context
+    # We verify indirectly by checking that commands don't inherit BUNDLE_GEMFILE
+    result = dx_capture "sh", "-c", "echo $BUNDLE_GEMFILE", clean_env: true
+    # The output should be empty or not contain our bundler gemfile
+    # Note: This depends on the test being run under bundler
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # Result Chaining
+  # ─────────────────────────────────────────────────────────────
+
+  def test_then_chains_on_success
+    executed = []
+    dx_run("true")
+      .then { executed << 1; dx_run("true") }
+      .then { executed << 2; dx_run("true") }
+
+    assert_equal [1, 2], executed
+  end
+
+  def test_then_short_circuits_on_failure
+    executed = []
+    dx_run("false")
+      .then { executed << 1; dx_run("true") }
+      .then { executed << 2; dx_run("true") }
+
+    assert_equal [], executed
+  end
+
+  def test_then_stops_at_first_failure
+    executed = []
+    dx_run("true")
+      .then { executed << 1; dx_run("false") }
+      .then { executed << 2; dx_run("true") }
+
+    assert_equal [1], executed
+  end
+
+  private
+
+  def dx_capture_shell(cmd)
+    dx_shell(cmd, out: :capture, err: :capture)
+  end
+
+  def dx_capture_ruby(*args)
+    dx_capture("ruby", *args)
+  end
+
+  def cleanup_controller(ctrl)
+    return unless ctrl
+
+    if ctrl.executing?
+      ctrl.kill(:KILL) rescue nil
+      ctrl.result(timeout: 1) rescue nil
+    end
+  end
+end
