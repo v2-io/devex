@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "paint"
+require_relative "support/ansi"
 
 module Devex
   # Helper methods available in ERB templates.
@@ -64,7 +64,7 @@ module Devex
         end
       end
 
-      Paint[text, *colors]
+      Support::ANSI[text, *colors]
     end
 
     # Get symbol - always unicode (basic unicode works everywhere)

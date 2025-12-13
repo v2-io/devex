@@ -353,6 +353,10 @@ run "python", "script.py", mise: false
 run "gem", "list", clean_env: false
 ```
 
+### Local dx Delegation
+
+If a project has `.dx-use-local` file, the global `dx` will delegate to the project's bundled version via `bundle exec dx`. This ensures version consistency. See ADR-003 for details.
+
 ### The Bundler Problem
 
 When devex is invoked via `bundle exec dx`, the parent bundler pollutes the environment:

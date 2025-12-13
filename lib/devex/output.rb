@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "paint"
 require "erb"
+require_relative "support/ansi"
 
 module Devex
   # Output helpers for tasks that respect runtime context.
@@ -59,7 +59,7 @@ module Devex
         rgb = COLORS[color_name]
         return text unless rgb
 
-        Paint[text, rgb]
+        Support::ANSI[text, rgb]
       end
 
       # --- Primary output methods ---

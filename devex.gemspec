@@ -33,6 +33,6 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Runtime dependencies
-  spec.add_dependency "paint", "~> 2.3"
+  # Note: tty-prompt will be removed when we implement our own prompts
   spec.add_dependency "tty-prompt", "~> 0.23"
 end

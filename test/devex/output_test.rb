@@ -159,7 +159,7 @@ class OutputTest < Minitest::Test
   def test_colorize_applies_color_when_enabled
     with_env("FORCE_COLOR" => "1") do
       result = Devex::Output.colorize("test", :success)
-      # Paint wraps text with ANSI codes
+      # ANSI wraps text with escape codes
       refute_equal "test", result
       assert_includes result, "test"
     end

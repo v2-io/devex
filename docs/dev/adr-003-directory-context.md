@@ -15,6 +15,66 @@ This ADR defines the directory context model for devex - how tools understand th
 
 ---
 
+## Local dx Delegation
+
+### The Problem
+
+User has global `dx` installed, but project specifies a different version in its Gemfile:
+
+```
+Global dx: 1.5.0
+Project Gemfile: gem "devex", "~> 2.0"
+```
+
+Running `dx test` would use the wrong version.
+
+### Solution: `.dx-use-local`
+
+Create an empty file `.dx-use-local` in project root to opt into delegation:
+
+```bash
+touch .dx-use-local
+```
+
+When present, global `dx` will:
+1. Change to project root directory
+2. Execute `bundle exec dx "$@"` (replacing itself)
+
+### Implementation
+
+```ruby
+# Early in dx startup, after project root discovery
+def maybe_delegate_to_local
+  return if ENV['DX_DELEGATED']  # Prevent infinite loop
+
+  use_local = project_dir / '.dx-use-local'
+  return unless use_local.exist?
+
+  ENV['DX_DELEGATED'] = '1'
+  Dir.chdir(project_dir)
+  exec 'bundle', 'exec', 'dx', *ARGV
+end
+```
+
+### When to Use
+
+- Project pins a specific devex version in Gemfile
+- Team needs consistent dx behavior across machines
+- Testing dx changes locally before release
+
+### Files
+
+```
+project/
+  .dx-use-local     # Empty file - triggers delegation
+  .dx.yml           # or .dx/
+  Gemfile           # gem "devex", "~> 2.0"
+```
+
+The file can be empty (presence is the signal) or could contain future configuration.
+
+---
+
 ## Core Directories
 
 ### Immutable Global Context

@@ -2,7 +2,6 @@ PATH
   remote: .
   specs:
     devex (0.1.0)
-      paint (~> 2.3)
       tty-prompt (~> 0.23)
 
 GEM

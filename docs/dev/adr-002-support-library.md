@@ -124,7 +124,7 @@ Joseph's scripts (~800 lines across 3 files) contain utilities accumulated over 
 - `dir?` - Alias for `directory?`
 - `exp` / `real` - Memoized `expand_path` / `realpath`
 - `rel` / `short` - Relative path with `~` substitution
-- `**` operator - Path joining (`path ** "subdir"`)
+- `/` operator - Path joining (`path / "subdir"`)
 - `[]` - Glob from directory
 - `dir!` - Create directory if missing
 
@@ -472,10 +472,8 @@ module Devex::Support
   #   path = Path.pwd                        # Current directory
   #   path = Path.home                       # Home directory
   #
-  #   # Joining (multiple styles, all equivalent)
-  #   path / "lib" / "foo.rb"                # Division operator (cleanest)
-  #   path ** "lib" ** "foo.rb"              # Double-star operator
-  #   path + "lib/foo.rb"                    # Native Pathname addition
+  #   # Joining
+  #   path / "lib" / "foo.rb"                # Division operator
   #   path.join("lib", "foo.rb")             # Explicit join
   #
   #   # Relative to project root
@@ -553,22 +551,12 @@ module Devex::Support
     end
 
     # ─────────────────────────────────────────────────────────────
-    # Path Joining - Multiple ergonomic styles
+    # Path Joining
     # ─────────────────────────────────────────────────────────────
 
     # Division operator for path joining: path / "subdir" / "file.rb"
     def /(other)
       self.class.new(join(other.to_s))
-    end
-
-    # Double-star operator (from shorthand): path ** "subdir"
-    def **(other)
-      self / other
-    end
-
-    # Override + to return Path, not Pathname
-    def +(other)
-      self.class.new(super(other.to_s))
     end
 
     # Override join to return Path
@@ -1085,7 +1073,7 @@ path = Path["~/src/project"]
 path.r?                    # readable?
 path.dir!                  # create if missing
 path["**/*.rb"]            # glob
-(path ** "lib" ** "foo.rb") # join
+path / "lib" / "foo.rb"    # join
 
 config = Path["config.yml"]
 config.read                # file contents
