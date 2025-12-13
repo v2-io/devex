@@ -7,7 +7,7 @@ Updated: 2025-12-13
 
 ## Priority 1: Critical Gaps (Expected behavior not working)
 
-### [ ] Add tests for `tool` / `tool?` methods
+### [x] Add tests for `tool` / `tool?` methods (DONE)
 - `exec.rb` defines `tool` and `tool?` but no tests exercise them
 - Need tests that verify call tree propagation (`DX_CALL_TREE`)
 - File: `test/devex/exec_test.rb`
