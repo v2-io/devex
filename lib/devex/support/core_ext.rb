@@ -8,93 +8,97 @@ module Devex
     #   using Devex::Support::CoreExt
     #
     # Or load globally (for CLI tools):
-    #   require "devex/support/core_ext/global"
+    #   require "devex/support/global"
     #
     module CoreExt
       # ─────────────────────────────────────────────────────────────
-      # Object Extensions
+      # Implementation Modules
+      # These define the actual methods and can be included in both
+      # refinements and monkey-patched classes.
       # ─────────────────────────────────────────────────────────────
 
-      refine Object do
-        # Returns true if object is nil, false, empty, or whitespace-only string
+      module ObjectMethods
         def blank?
           respond_to?(:empty?) ? empty? : !self
         end
 
-        # Opposite of blank?
         def present?
           !blank?
         end
 
-        # Returns self if present?, otherwise nil
         def presence
           self if present?
         end
 
-        # Returns true if object can be converted to a number
         def numeric?
           true if Float(self) rescue false
         end
 
-        # Returns true if object is contained in the given collection
-        # Cleaner than collection.include?(item)
         def in?(collection)
           collection.include?(self)
         end
       end
 
-      refine NilClass do
+      module NilMethods
         def blank? = true
         def present? = false
         def presence = nil
       end
 
-      refine FalseClass do
+      module FalseMethods
         def blank? = true
         def present? = false
         def presence = nil
       end
 
-      refine TrueClass do
+      module TrueMethods
         def blank? = false
         def present? = true
         def presence = self
       end
 
-      refine Numeric do
+      module NumericMethods
         def blank? = false
         def present? = true
         def presence = self
         def numeric? = true
       end
 
-      refine Array do
+      module ArrayBlankMethods
         def blank? = empty?
+        def present? = !blank?
+        def presence
+          self if present?
+        end
       end
 
-      refine Hash do
+      module HashBlankMethods
         def blank? = empty?
+        def present? = !blank?
+        def presence
+          self if present?
+        end
       end
 
-      refine String do
+      module StringMethods
         def blank?
           empty? || !match?(/[^[:space:]]/)
         end
 
-        # Convert string to Path
+        # Override present? to use String's blank? (import_methods copies bytecode,
+        # so ObjectMethods#present? would call Object's blank?)
+        def present?
+          !blank?
+        end
+
+        def presence
+          self if present?
+        end
+
         def to_p
           Devex::Support::Path.new(self)
         end
-      end
 
-      # ─────────────────────────────────────────────────────────────
-      # String Extensions
-      # ─────────────────────────────────────────────────────────────
-
-      refine String do
-        # Word-wrap text preserving paragraphs
-        # @param indent [:first, String, Integer] - indentation style
-        # @param width [Integer] - line width (default 90)
         def wrap(indent = :first, width = 90)
           ind = case indent
                 when :first  then self[/^[[:space:]]*/] || ""
@@ -116,7 +120,6 @@ module Devex
           }.join("\n\n")
         end
 
-        # Split text into sentences
         def sentences
           gsub(/\s+/, " ")
             .scan(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/)
@@ -124,34 +127,28 @@ module Devex
             .reject(&:empty?)
         end
 
-        # Escape for shell (POSIX)
         def to_sh
           return "''" if empty?
-          gsub(/([^A-Za-z0-9_\-.,:\/@\n])/, '\\\\\\1').gsub("\n", "'\n'")
+          gsub(/([^A-Za-z0-9_\-.,:\/@\n])/, '\\\\\\\\\\1').gsub("\n", "'\n'")
         end
 
-        # Collapse whitespace and strip
         def squish
           gsub(/[[:space:]]+/, " ").strip
         end
 
-        # FNV-1a 32-bit hash (fast, non-cryptographic)
         def fnv32
           bytes.reduce(0x811c9dc5) { |h, b| ((h ^ b) * 0x01000193) % (1 << 32) }
         end
 
-        # FNV-1a 64-bit hash (fast, non-cryptographic)
         def fnv64
           bytes.reduce(0xcbf29ce484222325) { |h, b| ((h ^ b) * 0x100000001b3) % (1 << 64) }
         end
 
-        # URL-safe Base64 encoding
         def base64url
           require "base64"
           Base64.urlsafe_encode64(self, padding: false)
         end
 
-        # Truncate to length with omission
         def truncate(length, omission: "...")
           return self if self.length <= length
           stop = length - omission.length
@@ -159,40 +156,32 @@ module Devex
           self[0, stop] + omission
         end
 
-        # Truncate to word boundary
         def truncate_words(count, omission: "...")
           words = split
           return self if words.length <= count
           words.first(count).join(" ") + omission
         end
 
-        # Indent each line
         def indent(amount, indent_char = " ")
           prefix = indent_char * amount
           gsub(/^/, prefix)
         end
 
-        # Remove pattern from string
         def remove(pattern)
           gsub(pattern, "")
         end
       end
 
-      # ─────────────────────────────────────────────────────────────
-      # Enumerable Extensions
-      # ─────────────────────────────────────────────────────────────
-
-      refine Enumerable do
-        # Arithmetic mean
+      module EnumerableMethods
         def average
           return 0.0 if respond_to?(:empty?) && empty?
           arr = to_a
           return 0.0 if arr.empty?
           arr.sum.to_f / arr.size
         end
-        alias_method :mean, :average
 
-        # Median value
+        def mean = average
+
         def median
           arr = to_a.sort
           return nil if arr.empty?
@@ -200,22 +189,21 @@ module Devex
           arr.size.odd? ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2.0
         end
 
-        # Sample variance
         def sample_variance
           arr = to_a
           return 0.0 if arr.size < 2
           avg = arr.sum.to_f / arr.size
           arr.sum { |x| (x - avg) ** 2 } / (arr.size - 1).to_f
         end
-        alias_method :variance, :sample_variance
 
-        # Standard deviation
+        def variance = sample_variance
+
         def standard_deviation
           Math.sqrt(sample_variance)
         end
-        alias_method :stddev, :standard_deviation
 
-        # Percentile calculation
+        def stddev = standard_deviation
+
         def percentile(p)
           arr = to_a.sort
           return nil if arr.empty?
@@ -226,34 +214,25 @@ module Devex
           arr[f] * (c - k) + arr[c] * (k - f)
         end
 
-        # 20th percentile (first quintile)
         def q20 = percentile(20)
-
-        # 80th percentile (fourth quintile)
         def q80 = percentile(80)
 
-        # Trimmed mean (average of q20, median, q80)
         def robust_average
           arr = to_a
           return nil if arr.empty?
           (q20.to_f + median.to_f + q80.to_f) / 3.0
         end
 
-        # Map by sending method to each element
-        # @example ["foo", "bar"].amap(:upcase) => ["FOO", "BAR"]
         def amap(method, *args, &block)
           map { |item| item.send(method, *args, &block) }
         end
 
-        # Run-length encoding
-        # @example [1,1,1,2,2,3].summarize_runs => [[3,1], [2,2], [1,3]]
         def summarize_runs
           arr = to_a
           return [] if arr.empty?
           arr.chunk_while { |a, b| a == b }.map { |run| [run.size, run.first] }
         end
 
-        # Test if collection has more than one element
         def many?
           count = 0
           if block_given?
@@ -264,14 +243,10 @@ module Devex
           false
         end
 
-        # Create hash indexed by block result
-        # @example users.index_by(&:id) => { 1 => user1, 2 => user2 }
         def index_by
           each_with_object({}) { |e, h| h[yield(e)] = e }
         end
 
-        # Create hash with elements as keys
-        # @example [:a, :b].index_with(0) => { a: 0, b: 0 }
         def index_with(default = nil)
           if block_given?
             each_with_object({}) { |e, h| h[e] = yield(e) }
@@ -280,18 +255,16 @@ module Devex
           end
         end
 
-        # Exclude elements (opposite of select)
         def excluding(*elements)
           reject { |e| elements.include?(e) }
         end
-        alias_method :without, :excluding
 
-        # Include additional elements
+        def without(*elements) = excluding(*elements)
+
         def including(*elements)
           to_a + elements
         end
 
-        # Extract values for given keys from elements
         def pluck(*keys)
           if keys.one?
             key = keys.first
@@ -302,12 +275,7 @@ module Devex
         end
       end
 
-      # ─────────────────────────────────────────────────────────────
-      # Array Extensions
-      # ─────────────────────────────────────────────────────────────
-
-      refine Array do
-        # Positional accessors
+      module ArrayMethods
         def second = self[1]
         def third = self[2]
         def fourth = self[3]
@@ -315,7 +283,6 @@ module Devex
         def second_to_last = self[-2]
         def third_to_last = self[-3]
 
-        # Convert to sentence: ["a", "b", "c"] => "a, b, and c"
         def to_sentence(connector: ", ", last_connector: ", and ")
           case size
           when 0 then ""
@@ -326,7 +293,6 @@ module Devex
           end
         end
 
-        # Split into groups of n
         def in_groups_of(n, fill_with = nil)
           arr = dup
           if fill_with && (remainder = arr.size % n) > 0
@@ -335,7 +301,6 @@ module Devex
           arr.each_slice(n).to_a
         end
 
-        # Split into n groups
         def in_groups(n, fill_with = nil)
           division = size.div(n)
           modulo = size % n
@@ -352,23 +317,16 @@ module Devex
           groups
         end
 
-        # Extract options hash from end of array
         def extract_options!
           last.is_a?(Hash) ? pop : {}
         end
 
-        # Deep duplicate
         def deep_dup
           map { |e| e.respond_to?(:deep_dup) ? e.deep_dup : e.dup rescue e }
         end
       end
 
-      # ─────────────────────────────────────────────────────────────
-      # Hash Extensions
-      # ─────────────────────────────────────────────────────────────
-
-      refine Hash do
-        # Deep duplicate
+      module HashMethods
         def deep_dup
           each_with_object({}) do |(k, v), h|
             h[k.respond_to?(:deep_dup) ? k.deep_dup : (k.dup rescue k)] =
@@ -376,7 +334,6 @@ module Devex
           end
         end
 
-        # Deep merge
         def deep_merge(other, &block)
           dup.deep_merge!(other, &block)
         end
@@ -394,17 +351,14 @@ module Devex
           self
         end
 
-        # Recursively stringify keys
         def deep_stringify_keys
           transform_keys_recursive(&:to_s)
         end
 
-        # Recursively symbolize keys
         def deep_symbolize_keys
           transform_keys_recursive { |k| k.respond_to?(:to_sym) ? k.to_sym : k }
         end
 
-        # Assert only allowed keys are present
         def assert_valid_keys(*valid_keys)
           valid_keys = valid_keys.flatten
           each_key do |k|
@@ -415,7 +369,6 @@ module Devex
           self
         end
 
-        # Deep compact with stable sorting for signatures
         def stable_compact
           compact
             .transform_values { |v|
@@ -429,13 +382,11 @@ module Devex
             .to_h
         end
 
-        # Content-based signature (SHA1 of stable representation)
         def to_sig
           require "digest"
           Digest::SHA1.hexdigest(stable_compact.inspect)
         end
 
-        # Helper for deep key transformation (not marked private - refinement scoping is sufficient)
         def transform_keys_recursive(&block)
           each_with_object({}) do |(k, v), h|
             new_key = yield(k)
@@ -448,15 +399,10 @@ module Devex
         end
       end
 
-      # ─────────────────────────────────────────────────────────────
-      # Integer Extensions
-      # ─────────────────────────────────────────────────────────────
-
       # Ordinal suffixes (defined outside refinement to avoid warning)
       ORDINALS = { 1 => "st", 2 => "nd", 3 => "rd" }.freeze
 
-      refine Integer do
-        # Returns ordinal suffix (st, nd, rd, th)
+      module IntegerMethods
         def ordinal
           abs_mod_100 = abs % 100
           if (11..13).cover?(abs_mod_100)
@@ -466,10 +412,56 @@ module Devex
           end
         end
 
-        # Returns number with ordinal suffix (1st, 2nd, 3rd)
         def ordinalize
           "#{self}#{ordinal}"
         end
+      end
+
+      # ─────────────────────────────────────────────────────────────
+      # Refinements
+      # Use import_methods (Ruby 3.1+) instead of include (removed in 3.2)
+      # ─────────────────────────────────────────────────────────────
+
+      refine Object do
+        import_methods ObjectMethods
+      end
+
+      refine NilClass do
+        import_methods NilMethods
+      end
+
+      refine FalseClass do
+        import_methods FalseMethods
+      end
+
+      refine TrueClass do
+        import_methods TrueMethods
+      end
+
+      refine Numeric do
+        import_methods NumericMethods
+      end
+
+      refine Array do
+        import_methods ArrayBlankMethods
+        import_methods ArrayMethods
+      end
+
+      refine Hash do
+        import_methods HashBlankMethods
+        import_methods HashMethods
+      end
+
+      refine String do
+        import_methods StringMethods
+      end
+
+      refine Enumerable do
+        import_methods EnumerableMethods
+      end
+
+      refine Integer do
+        import_methods IntegerMethods
       end
     end
   end
