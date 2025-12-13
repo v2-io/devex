@@ -199,6 +199,100 @@ class CoreExtTest < Minitest::Test
   end
 
   # ─────────────────────────────────────────────────────────────
+  # Case transform extensions
+  # ─────────────────────────────────────────────────────────────
+
+  def test_up_case
+    assert_equal "HELLO WORLD", "Hello World".up_case
+    assert_equal "HELLO WORLD", "hello world".upper
+    assert_equal "HELLO", "hello".caps
+  end
+
+  def test_down_case
+    assert_equal "hello world", "Hello World".down_case
+    assert_equal "hello world", "HELLO WORLD".lower
+    assert_equal "hello", "HELLO".lowercase
+  end
+
+  def test_snake_case
+    assert_equal "hello_world", "HelloWorld".snake_case
+    assert_equal "hello_world", "helloWorld".snakecase
+    assert_equal "hello_world", "hello-world".snake_case
+    assert_equal "hello_world", "hello world".snake_case
+    assert_equal "http_server", "HTTPServer".snake_case
+    assert_equal "simple_xml_parser", "SimpleXMLParser".snake_case
+  end
+
+  def test_snake_case_aliases
+    assert_equal "hello_world", "HelloWorld".var_case
+    assert_equal "hello_world", "HelloWorld".varcase
+  end
+
+  def test_scream_case
+    assert_equal "HELLO_WORLD", "HelloWorld".scream_case
+    assert_equal "HELLO_WORLD", "hello-world".screamcase
+    assert_equal "HTTP_SERVER", "HTTPServer".const_case
+    assert_equal "HTTP_SERVER", "HTTPServer".constcase
+  end
+
+  def test_kebab_case
+    assert_equal "hello-world", "HelloWorld".kebab_case
+    assert_equal "hello-world", "hello_world".kebabcase
+    assert_equal "http-server", "HTTPServer".kebab_case
+  end
+
+  def test_pascal_case
+    assert_equal "HelloWorld", "hello_world".pascal_case
+    assert_equal "HelloWorld", "hello-world".pascalcase
+    assert_equal "HttpServer", "http_server".mod_case
+    assert_equal "HttpServer", "HTTPServer".modcase
+  end
+
+  def test_camel_case
+    assert_equal "helloWorld", "hello_world".camel_case
+    assert_equal "helloWorld", "HelloWorld".camelcase
+    assert_equal "httpServer", "http_server".camel_case
+  end
+
+  def test_title_case_basic
+    assert_equal "The Quick Brown Fox", "the quick brown fox".title_case
+    assert_equal "Hello World", "hello world".titlecase
+  end
+
+  def test_title_case_first_and_last_always_capitalized
+    # First word always capitalized even if minor
+    assert_equal "The Quick Fox", "the quick fox".title_case
+    # Last word always capitalized even if minor
+    assert_equal "What Is Love For", "what is love for".title_case
+    assert_equal "A Test To", "a test to".title_case
+  end
+
+  def test_title_case_minor_words
+    # Articles, conjunctions, short prepositions should be lowercase (unless first/last)
+    assert_equal "A Man and a Plan", "a man and a plan".title_case
+    assert_equal "The Fox in the Box", "the fox in the box".title_case
+    assert_equal "To Be or Not to Be", "to be or not to be".title_case
+  end
+
+  def test_title_case_with_hyphens
+    # Words after hyphens should be capitalized
+    assert_equal "Self-Esteem", "self-esteem".title_case
+    # But minor words after hyphen stay lowercase
+    assert_equal "Jack-of-All-Trades", "jack-of-all-trades".title_case
+  end
+
+  def test_title_case_preserves_spacing
+    assert_equal "Hello   World", "hello   world".title_case
+  end
+
+  def test_case_transforms_empty_string
+    assert_equal "", "".snake_case
+    assert_equal "", "".pascal_case
+    assert_equal "", "".camel_case
+    assert_equal "", "".title_case
+  end
+
+  # ─────────────────────────────────────────────────────────────
   # Enumerable extensions
   # ─────────────────────────────────────────────────────────────
 

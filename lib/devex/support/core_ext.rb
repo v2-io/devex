@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "set"
+
 module Devex
   module Support
     # Core extensions as refinements.
@@ -170,6 +172,125 @@ module Devex
         def remove(pattern)
           gsub(pattern, "")
         end
+
+        # ─────────────────────────────────────────────────────────────
+        # Case Transforms
+        # ─────────────────────────────────────────────────────────────
+
+        # ALL UPPER CASE
+        def up_case
+          upcase
+        end
+
+        # all lower case
+        def down_case
+          downcase
+        end
+
+        # snake_case
+        # Converts CamelCase, kebab-case, spaces to snake_case
+        def snake_case
+          gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
+            .gsub(/([a-z\d])([A-Z])/, '\1_\2')
+            .gsub(/[\s\-]+/, "_")
+            .downcase
+        end
+
+        # SCREAM_CASE (screaming snake case / constant case)
+        def scream_case
+          snake_case.upcase
+        end
+
+        # kebab-case
+        def kebab_case
+          snake_case.tr("_", "-")
+        end
+
+        # PascalCase (first letter uppercase)
+        def pascal_case
+          snake_case
+            .split("_")
+            .map(&:capitalize)
+            .join
+        end
+
+        # camelCase (first letter lowercase)
+        def camel_case
+          result = pascal_case
+          return result if result.empty?
+          result[0] = result[0].downcase
+          result
+        end
+
+        # Title Case With Proper Rules
+        # - Always capitalize first/last word
+        # - Lowercase: articles, coord conjunctions, short prepositions
+        # - Capitalize after hyphens (unless minor word)
+        def title_case
+          # Words that should be lowercase (unless first/last)
+          # Articles, coordinating conjunctions, short prepositions
+          # Note: verbs (is), pronouns (it), subordinating conj (if) should be capitalized
+          minor_words = Set.new(%w[
+            a an the
+            for and nor but or yet so
+            at by in to of on up as
+          ])
+
+          # Split keeping delimiters (spaces and hyphens)
+          tokens = split(/(\s+|-+)/)
+          return "" if tokens.empty?
+
+          # Find actual words (not delimiters)
+          word_indices = tokens.each_index.select { |i| !tokens[i].match?(/^[\s-]+$/) }
+          return self if word_indices.empty?
+
+          first_word_idx = word_indices.first
+          last_word_idx = word_indices.last
+
+          tokens.each_with_index.map do |token, idx|
+            if token.match?(/^[\s-]+$/)
+              # Delimiter - keep as-is
+              token
+            elsif idx == first_word_idx || idx == last_word_idx
+              # First or last word - always capitalize
+              token.capitalize
+            elsif minor_words.include?(token.downcase)
+              # Minor word - lowercase
+              token.downcase
+            else
+              # Regular word - capitalize
+              token.capitalize
+            end
+          end.join
+        end
+
+        # Aliases without underscores
+        # Note: upcase and downcase are Ruby native - don't override
+        def snakecase = snake_case
+        def screamcase = scream_case
+        def kebabcase = kebab_case
+        def pascalcase = pascal_case
+        def camelcase = camel_case
+        def titlecase = title_case
+
+        # Additional common aliases
+        def upper = up_case
+        def uppercase = up_case
+        def upper_case = up_case
+        def caps = up_case
+
+        def lower = down_case
+        def lowercase = down_case
+        def lower_case = down_case
+
+        def var_case = snake_case
+        def varcase = snake_case
+
+        def const_case = scream_case
+        def constcase = scream_case
+
+        def mod_case = pascal_case
+        def modcase = pascal_case
       end
 
       module EnumerableMethods

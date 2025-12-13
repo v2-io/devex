@@ -345,6 +345,156 @@ module Devex::Support::CoreExt::String
 end
 ```
 
+### String Case Transforms
+
+Comprehensive case transformation methods with sensible aliases:
+
+```ruby
+module Devex::Support::CoreExt::String
+  refine String do
+    # ─────────────────────────────────────────────────────────────
+    # Primary Case Methods
+    # ─────────────────────────────────────────────────────────────
+
+    # ALL UPPER CASE
+    def up_case
+      upcase
+    end
+
+    # all lower case
+    def down_case
+      downcase
+    end
+
+    # Title Case With Proper Rules
+    # - Always capitalize first/last word
+    # - Lowercase: articles (a, an, the), coordinating conjunctions
+    #   (for, and, nor, but, or, yet, so), short prepositions (at, by, in, to, of)
+    # - Capitalize after hyphens unless minor word
+    # - Keep "to" lowercase in infinitives
+    def title_case
+      # Words that should be lowercase (unless first/last)
+      # Articles, coordinating conjunctions, short prepositions
+      # Note: verbs (is), pronouns (it), subordinating conj (if) get capitalized
+      minor_words = %w[
+        a an the
+        for and nor but or yet so
+        at by in to of on up as
+      ].to_set
+
+      words = split(/(\s+|-+)/)  # Keep delimiters
+      result = []
+
+      words.each_with_index do |word, i|
+        if word.match?(/^[\s-]+$/)
+          # Delimiter - keep as-is
+          result << word
+        else
+          # Determine if this is first or last actual word
+          actual_words = words.reject { |w| w.match?(/^[\s-]+$/) }
+          is_first = actual_words.first == word
+          is_last = actual_words.last == word
+
+          if is_first || is_last || !minor_words.include?(word.downcase)
+            result << word.capitalize
+          else
+            result << word.downcase
+          end
+        end
+      end
+
+      result.join
+    end
+
+    # snake_case
+    def snake_case
+      gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
+        .gsub(/([a-z\d])([A-Z])/, '\1_\2')
+        .gsub(/[\s\-]+/, '_')
+        .downcase
+    end
+
+    # SCREAM_CASE (also: screaming snake case, constant case)
+    def scream_case
+      snake_case.upcase
+    end
+
+    # kebab-case
+    def kebab_case
+      snake_case.tr('_', '-')
+    end
+
+    # camelCase (first letter lowercase)
+    def camel_case
+      result = pascal_case
+      result[0] = result[0].downcase if result.length > 0
+      result
+    end
+
+    # PascalCase (first letter uppercase)
+    def pascal_case
+      snake_case
+        .split('_')
+        .map(&:capitalize)
+        .join
+    end
+
+    # ─────────────────────────────────────────────────────────────
+    # Aliases (common alternative names)
+    # ─────────────────────────────────────────────────────────────
+
+    # up_case aliases
+    alias upcase up_case
+    alias upper up_case
+    alias uppercase up_case
+    alias upper_case up_case
+    alias caps up_case
+
+    # down_case aliases
+    alias downcase down_case
+    alias lower down_case
+    alias lowercase down_case
+    alias lower_case down_case
+
+    # snake_case aliases
+    alias snakecase snake_case
+    alias var_case snake_case
+    alias varcase snake_case
+
+    # scream_case aliases
+    alias screamcase scream_case
+    alias const_case scream_case
+    alias constcase scream_case
+
+    # kebab_case aliases
+    alias kebabcase kebab_case
+
+    # camel_case aliases
+    alias camelcase camel_case
+
+    # pascal_case aliases
+    alias pascalcase pascal_case
+    alias mod_case pascal_case
+    alias modcase pascal_case
+
+    # title_case aliases
+    alias titlecase title_case
+  end
+end
+```
+
+**Title Case Rules:**
+
+| Rule | Example |
+|------|---------|
+| Always capitalize first word | "the quick fox" → "The Quick Fox" |
+| Always capitalize last word | "what is love for" → "What Is Love For" |
+| Lowercase articles | "A Man And A Plan" → "A Man and a Plan" |
+| Lowercase coord. conjunctions | "For, And, Nor, But" → "For, and, nor, but" |
+| Lowercase short prepositions | "At, By, In, To, Of" → "at, by, in, to, of" |
+| Capitalize after hyphen | "self-esteem" → "Self-Esteem" |
+| But not minor after hyphen | "jack-of-all-trades" → "Jack-of-All-Trades" |
+
 ### Enumerable Statistics
 
 ```ruby
