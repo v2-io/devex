@@ -8,7 +8,7 @@ A lightweight, zero-heavy-dependency Ruby CLI providing a unified `dx` command f
 
 - **Single entry point**: `dx` command for all dev tasks
 - **Zero-dependency core**: Support library uses only Ruby stdlib
-- **Project-local tasks**: Override or extend built-ins with `tasks/*.rb`
+- **Project-local tools**: Override or extend built-ins with `tools/*.rb`
 - **Agent-aware**: Automatically detects AI agent invocation and adapts output
 - **Environment-aware**: Rails-style environment detection (dev/test/staging/prod)
 - **Command execution**: Clean subprocess management with environment orchestration
@@ -40,12 +40,12 @@ dx version set 2.0.0
 dx version --format=json
 ```
 
-## Project-Local Tasks
+## Project-Local Tools
 
-Create a `tasks/` directory in your project root with Ruby files:
+Create a `tools/` directory in your project root with Ruby files:
 
 ```ruby
-# tasks/deploy.rb
+# tools/deploy.rb
 desc "Deploy to production"
 flag :dry_run, "-n", "--dry-run", desc: "Show what would be deployed"
 
@@ -65,7 +65,7 @@ Then run: `dx deploy` or `dx deploy --dry-run`
 ### Nested Tools
 
 ```ruby
-# tasks/db.rb
+# tools/db.rb
 desc "Database operations"
 
 tool "migrate" do
@@ -90,8 +90,8 @@ Access as: `dx db migrate`, `dx db seed`
 Create `.devex.yml` in your project root:
 
 ```yaml
-# Custom tasks directory (default: tasks)
-tasks_dir: dev/tasks
+# Custom tools directory (default: tools)
+tools_dir: dev/tools
 ```
 
 ## Global Options

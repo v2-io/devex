@@ -4,10 +4,10 @@ This guide covers how to create tools (commands) for devex, including all availa
 
 ## Quick Start
 
-Create a file in `tasks/` (or `lib/devex/builtins/` for built-ins):
+Create a file in `tools/` (or `lib/devex/builtins/` for built-ins):
 
 ```ruby
-# tasks/hello.rb
+# tools/hello.rb
 desc "Say hello"
 
 def run
@@ -55,7 +55,7 @@ Access in `run`: `filename`, `output`, `files` (as methods)
 ### Nested Tools (Subcommands)
 
 ```ruby
-# tasks/db.rb
+# tools/db.rb
 desc "Database operations"
 
 tool "migrate" do
@@ -772,7 +772,7 @@ end
 Project tasks override built-ins of the same name:
 
 ```ruby
-# tasks/version.rb - overrides built-in version command
+# tools/version.rb - overrides built-in version command
 desc "Custom version display"
 
 def run
@@ -814,7 +814,7 @@ end
 ## Complete Example
 
 ```ruby
-# tasks/check.rb
+# tools/check.rb
 desc "Run project health checks"
 
 long_desc <<~DESC

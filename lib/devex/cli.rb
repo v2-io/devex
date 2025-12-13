@@ -95,10 +95,10 @@ module Devex
     end
 
     # Load project-specific tools
-    def load_project_tasks(project_root)
+    def load_project_tools(project_root)
       @project_root = project_root
-      tasks_dir = Devex.tasks_dir(project_root)
-      Loader.load_directory(tasks_dir, @root_tool, @mixins) if tasks_dir
+      tools_dir = Devex.tools_dir(project_root)
+      Loader.load_directory(tools_dir, @root_tool, @mixins) if tools_dir
     end
 
     # Merge builtin tools (project tools take precedence)

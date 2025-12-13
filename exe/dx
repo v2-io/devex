@@ -8,9 +8,9 @@ cli = Devex::CLI.new(executable_name: "dx")
 # Load built-in tools
 cli.load_builtins
 
-# Find project root and load project tasks
+# Find project root and load project tools
 project_root, _marker = Devex.find_project_root
-cli.load_project_tasks(project_root) if project_root
+cli.load_project_tools(project_root) if project_root
 
 # Merge builtins (project takes precedence)
 cli.merge_builtins

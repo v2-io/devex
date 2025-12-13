@@ -44,7 +44,7 @@ Devex is a **lightweight Ruby CLI framework** providing a unified `dx` command f
 **Features working:**
 - Command routing with arbitrary nesting (`dx version bump patch`)
 - Help anywhere in command path (`dx help version`, `dx version --help`, `dx version help bump`)
-- Task loading from `tasks/` directory
+- Tool loading from `tools/` directory
 - DSL: `desc`, `long_desc`, `flag`, `required_arg`, `optional_arg`, `remaining_args`, nested `tool`
 - Project tasks override built-ins (with `builtin.run` access to original)
 - Agent mode detection (non-tty, merged streams, CI, explicit env var)
@@ -106,8 +106,8 @@ Devex distinguishes between:
    - `lib/devex/builtins/` - Built-in commands
 
 2. **Project root** (`cli.project_root`) - The user's project
-   - Detected by `.devex.yml`, `.git`, or `tasks/` directory
-   - `tasks/` - User's custom commands
+   - Detected by `.devex.yml`, `.git`, or `tools/` directory
+   - `tools/` - User's custom commands
 
 Templates are always loaded from the gem; tasks can be loaded from both.
 

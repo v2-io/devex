@@ -52,7 +52,7 @@
 
 **DECISION: Clean-room implementation**
 
-Start with patterns proven in archema's `tasks/.index.rb`:
+Start with patterns proven in archema's `tools/.index.rb`:
 - Exec helpers: `bundle_exec`, `gem_exec`, `ruby_script`, `run_tests`
 - Environment: `clear_ruby_env!`, `ensure_project_root!`
 - Output: `header`, `success`, `error`, `warn`

@@ -38,8 +38,8 @@ Tools can be nested arbitrarily:
 
 **R3: Project-local tasks**
 
-dx looks for project-specific tasks in a configurable directory (default:
-`tasks/`). Project tasks can add new commands or override built-in ones.
+dx looks for project-specific tools in a configurable directory (default:
+`tools/`). Project tools can add new commands or override built-in ones.
 
 **Priority:** Project tasks win over built-ins of the same name. A project task
 can call the built-in it overrides (like `super`):
@@ -145,11 +145,11 @@ OptionParser for flag parsing. No toys, thor, dry-cli, etc.
 
 `exe/dx` is the entry point. It:
 1. Finds project root by walking up from cwd looking for (in order):
-   - `.devex.yml` (config file, can specify custom tasks dir)
+   - `.devex.yml` (config file, can specify custom tools dir)
    - `.git` (git repository root)
-   - `tasks/` directory
-2. Loads built-in tasks from gem
-3. Loads project tasks from `tasks/` (or configured dir from `.devex.yml`)
+   - `tools/` directory
+2. Loads built-in tools from gem
+3. Loads project tools from `tools/` (or configured dir from `.devex.yml`)
 4. Parses ARGV and dispatches
 
 If no project root found, still runs with just built-in tasks.
@@ -158,8 +158,8 @@ If no project root found, still runs with just built-in tasks.
 
 Task files are Ruby files that are `instance_eval`'d in a DSL context.
 File structure maps to command structure:
-- `tasks/test.rb` → `dx test`
-- `tasks/version.rb` with nested `tool "bump"` → `dx version bump`
+- `tools/test.rb` → `dx test`
+- `tools/version.rb` with nested `tool "bump"` → `dx version bump`
 
 ## Open Questions
 

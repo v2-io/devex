@@ -8,10 +8,10 @@ module Devex
     # Load all tools from a directory into a root tool
     #
     # Directory structure maps to tool hierarchy:
-    #   tasks/test.rb           -> dx test
-    #   tasks/version.rb        -> dx version (with nested tools defined inside)
-    #   tasks/docs/             -> dx docs (if .index.rb exists) or namespace
-    #   tasks/docs/generate.rb  -> dx docs generate
+    #   tools/test.rb           -> dx test
+    #   tools/version.rb        -> dx version (with nested tools defined inside)
+    #   tools/docs/             -> dx docs (if .index.rb exists) or namespace
+    #   tools/docs/generate.rb  -> dx docs generate
     #
     def self.load_directory(dir, root_tool, mixins = {})
       return unless dir && File.directory?(dir)

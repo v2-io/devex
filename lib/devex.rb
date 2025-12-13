@@ -13,10 +13,10 @@ module Devex
   class Error < StandardError; end
 
   # Project root markers, checked in order
-  ROOT_MARKERS = %w[.devex.yml .git tasks].freeze
+  ROOT_MARKERS = %w[.devex.yml .git tools].freeze
 
-  # Default tasks directory name
-  DEFAULT_TASKS_DIR = "tasks"
+  # Default tools directory name
+  DEFAULT_TOOLS_DIR = "tools"
 
   # Templates directory name within the gem
   TEMPLATES_DIR = "templates"
@@ -60,7 +60,7 @@ module Devex
       File.join(templates_path, name)
     end
     # Find the project root by walking up from the given directory
-    # looking for root markers (.devex.yml, .git, tasks/)
+    # looking for root markers (.devex.yml, .git, tools/)
     #
     # Returns [root_path, marker_found] or [nil, nil] if not found
     def find_project_root(from = Dir.pwd)
@@ -83,21 +83,21 @@ module Devex
       [nil, nil]
     end
 
-    # Get the tasks directory for a project root
+    # Get the tools directory for a project root
     # Reads from .devex.yml if present, otherwise uses default
-    def tasks_dir(project_root)
+    def tools_dir(project_root)
       return nil unless project_root
 
       config_file = File.join(project_root, ".devex.yml")
       if File.exist?(config_file)
         require "yaml"
         config = YAML.safe_load(File.read(config_file)) || {}
-        tasks_dir_name = config["tasks_dir"] || DEFAULT_TASKS_DIR
+        tools_dir_name = config["tools_dir"] || DEFAULT_TOOLS_DIR
       else
-        tasks_dir_name = DEFAULT_TASKS_DIR
+        tools_dir_name = DEFAULT_TOOLS_DIR
       end
 
-      dir = File.join(project_root, tasks_dir_name)
+      dir = File.join(project_root, tools_dir_name)
       File.directory?(dir) ? dir : nil
     end
   end
