@@ -17,13 +17,29 @@ Devex is a **lightweight Ruby CLI framework** providing a unified `dx` command f
 
 ### What Works
 
-**Core CLI Framework** (~800 lines total in `lib/devex/`):
+**Core CLI Framework** (`lib/devex/`):
 - `cli.rb` - Main dispatcher, help system, tool resolution
 - `tool.rb` - Tool/command representation with flags, args, subtools
 - `dsl.rb` - DSL for declaring tools
 - `loader.rb` - Loads task files from disk
 - `context.rb` - Runtime detection (terminal, agent, CI, environment, call tree)
-- `output.rb` - Styled output helpers (colors via paint gem)
+- `output.rb` - Styled output helpers
+
+**Support Library** (`lib/devex/support/`):
+- `path.rb` - Immutable Path class with fluent API
+- `ansi.rb` - Terminal colors (zero dependencies, truecolor support)
+- `core_ext.rb` - Ruby refinements (blank?, present?, underscore, etc.)
+- `global.rb` - Global mode loader for core extensions
+
+**Directory Context** (`lib/devex/`):
+- `dirs.rb` - Core directories (invoked_dir, dest_dir, project_dir, dx_src_dir)
+- `project_paths.rb` - Lazy path resolution with fail-fast feedback
+- `working_dir.rb` - Immutable working directory context with `within` blocks
+
+**Command Execution** (`lib/devex/exec/`):
+- `exec.rb` - Main module (run, capture, spawn, shell, ruby, tool)
+- `result.rb` - Result class with monad operations (then, map, exit_on_failure!)
+- `controller.rb` - Background process management
 
 **Features working:**
 - Command routing with arbitrary nesting (`dx version bump patch`)
@@ -45,9 +61,6 @@ Devex is a **lightweight Ruby CLI framework** providing a unified `dx` command f
 - `dx version set <version>` - Set explicit version
 
 ### What's Missing
-
-**Immediate priorities:**
-- Exec helpers mixin (`bundle_exec`, `sh`, `clear_ruby_env!`)
 
 **Built-in tasks to implement:**
 - `dx test` - Auto-detect and run test suite
@@ -102,34 +115,52 @@ Templates are always loaded from the gem; tasks can be loaded from both.
 
 ```
 lib/devex/
-├── cli.rb          # Entry point, dispatch, global flags, help extraction
-├── tool.rb         # Tool class, Flag, Arg, ExecutionContext
-├── dsl.rb          # DSL and DSLContext for parsing task files
-├── loader.rb       # Directory scanning, file loading
-├── context.rb      # Runtime detection (IMPORTANT - read this)
-├── output.rb       # Styled output with paint gem
-├── templates/      # ERB templates for text output
-│   └── debug.erb   # Debug command template
+├── cli.rb              # Entry point, dispatch, global flags, help extraction
+├── tool.rb             # Tool class, Flag, Arg, ExecutionContext
+├── dsl.rb              # DSL and DSLContext for parsing task files
+├── loader.rb           # Directory scanning, file loading
+├── context.rb          # Runtime detection (IMPORTANT - read this)
+├── output.rb           # Styled output helpers
+├── dirs.rb             # Core directory context (invoked, project, dest)
+├── project_paths.rb    # Lazy project path resolution (prj.lib, prj.test, etc.)
+├── working_dir.rb      # Immutable working directory with `within` blocks
+├── exec.rb             # Command execution module (run, capture, spawn, etc.)
+├── exec/
+│   ├── result.rb       # Result class with monad operations
+│   └── controller.rb   # Background process management
+├── support/
+│   ├── path.rb         # Immutable Path class
+│   ├── ansi.rb         # Terminal colors (zero dependencies)
+│   ├── core_ext.rb     # Ruby refinements
+│   └── global.rb       # Global mode loader
+├── templates/          # ERB templates for text output
+│   └── debug.erb       # Debug command template
 └── builtins/
-    ├── .index.rb   # Root tool config
-    ├── debug.rb    # Context debugging (hidden)
-    └── version.rb  # Version management
+    ├── .index.rb       # Root tool config
+    ├── debug.rb        # Context debugging (hidden)
+    └── version.rb      # Version management
 
-docs/ref/           # CLI conventions reference (copied from sapientia)
-├── agent-mode.md   # How to detect and behave for AI agents
-├── cli-interface.md # Universal flags, exit codes
-├── io-handling.md  # Stream usage, pipeline safety
-├── error-handling.md
-├── configuration.md
-├── signals.md
-├── design-philosophy.md
-└── temporal-software-theory.md  # TST theorems for decision-making
+docs/
+├── developing-tools.md # Tool development guide (AUTHORITATIVE)
+└── ref/                # CLI conventions reference
+    ├── agent-mode.md   # How to detect and behave for AI agents
+    ├── cli-interface.md
+    └── ...
 
-test/
-├── test_helper.rb
-└── devex/
-    ├── context_test.rb  # 42 tests for context detection
-    └── output_test.rb   # Output helper tests
+test/devex/
+├── context_test.rb     # Context detection tests
+├── output_test.rb      # Output helper tests
+├── dirs_test.rb        # Directory context tests
+├── project_paths_test.rb
+├── working_dir_test.rb
+├── exec_test.rb        # Command execution tests
+├── exec/
+│   ├── result_test.rb
+│   └── controller_test.rb
+└── support/
+    ├── path_test.rb
+    ├── ansi_test.rb
+    └── core_ext_test.rb
 ```
 
 ## Architecture Decisions
@@ -156,14 +187,14 @@ This is why helper methods in task files work - they're re-defined at execution 
 See `lib/devex/context.rb` for full logic.
 
 ### Output Adaptation
-- **Terminal**: Colors via paint gem, unicode symbols, progress indicators
+- **Terminal**: Colors via ANSI module, unicode symbols, progress indicators
 - **Agent mode**: Plain ASCII, JSON structured output, no progress
 - **Piped**: Clean stdout for pipelines, status to stderr
 
 ## Testing
 
 ```bash
-bundle exec rake test  # Run all tests (59 tests currently)
+bundle exec rake test  # Run all tests (399 tests currently)
 ```
 
 Tests use:
@@ -174,8 +205,11 @@ Tests use:
 ## Dependencies
 
 **Runtime** (declared in gemspec):
-- `paint ~> 2.3` - Terminal colors (truecolor support)
 - `tty-prompt ~> 0.23` - Interactive prompts (for dx config, etc.)
+
+**Zero-dependency support library:**
+- ANSI colors, Path class, and core extensions use only Ruby stdlib
+- No external gems required for core functionality
 
 **Development**:
 - minitest, minitest-reporters, climate_control, aruba, prop_check
@@ -258,9 +292,10 @@ Note: Only colors are stripped with `--no-color`, not symbols. Basic unicode lik
 ## Common Tasks for Future Sessions
 
 1. **Add a new built-in task**: See [docs/developing-tools.md](docs/developing-tools.md) for patterns
-2. **Add exec helpers**: Create `lib/devex/mixins/exec.rb` with `bundle_exec`, `sh`, etc.
-3. **Implement dx config**: Interactive questionnaire using tty-prompt
-4. **Hide dx debug from help**: Currently visible, should be hidden
+2. **Implement dx test**: Auto-detect test framework, run with appropriate runner
+3. **Implement dx lint**: RuboCop/StandardRB integration
+4. **Implement dx config**: Interactive questionnaire using tty-prompt
+5. **Hide dx debug from help**: Currently visible, should be hidden
 
 ## Reference Documents
 

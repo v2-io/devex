@@ -78,6 +78,379 @@ Access as: `dx db migrate`, `dx db seed --env=test`
 
 ---
 
+## External Command Execution
+
+The `Devex::Exec` module provides methods for running external commands with automatic environment handling.
+
+### Quick Reference
+
+| Method | Purpose | stdout | Returns |
+|--------|---------|--------|---------|
+| `run(*cmd)` | Run command, wait | streams | `Result` |
+| `run?(*cmd)` | Test if command succeeds | silent | `bool` |
+| `capture(*cmd)` | Run and capture output | captured | `Result` |
+| `spawn(*cmd)` | Run in background | configurable | `Controller` |
+| `exec!(*cmd)` | Replace this process | N/A | never returns |
+| `shell(str)` | Run via shell | streams | `Result` |
+| `shell?(str)` | Test shell command | silent | `bool` |
+| `ruby(*args)` | Run Ruby subprocess | streams | `Result` |
+| `tool(name, *args)` | Run another dx tool | streams | `Result` |
+
+### Basic Usage
+
+```ruby
+# In your tool's run method:
+include Devex::Exec
+
+def run
+  # Run a command, streaming output
+  run "bundle", "install"
+
+  # Check if command succeeded
+  result = run "make", "test"
+  if result.failed?
+    Output.error "Tests failed"
+    exit result.exit_code
+  end
+
+  # Exit immediately on failure
+  run("bundle", "install").exit_on_failure!
+
+  # Chain commands (short-circuit on failure)
+  run("lint").then { run("test") }.then { run("build") }.exit_on_failure!
+end
+```
+
+### `run` - Run Command
+
+The workhorse method. Runs a command, streams output, waits for completion.
+
+```ruby
+run "bundle", "install"
+
+# With options
+run "make", "test", env: { CI: "1" }, chdir: "subproject/"
+
+# With timeout (seconds)
+run "slow_task", timeout: 30
+```
+
+**Behavior:**
+- Streams stdout/stderr to terminal
+- Applies environment stack (cleans bundler pollution)
+- Returns `Result` object
+- Never raises on non-zero exit
+
+### `run?` - Test Command Success
+
+Silent execution, returns boolean. Perfect for conditionals.
+
+```ruby
+if run? "which", "rubocop"
+  run "rubocop", "--autocorrect"
+end
+
+unless run? "git", "diff", "--quiet"
+  Output.warn "Uncommitted changes"
+end
+```
+
+### `capture` - Capture Output
+
+When you need the output as a string.
+
+```ruby
+result = capture "git", "rev-parse", "HEAD"
+commit = result.stdout.strip
+
+result = capture "git", "status", "--porcelain"
+if result.success? && result.stdout.empty?
+  Output.success "Working directory clean"
+end
+```
+
+### `spawn` - Background Execution
+
+Start a process without waiting. Returns immediately with a Controller.
+
+```ruby
+# Start server in background
+server = spawn "rails", "server", "-p", "3000"
+
+# Do other work...
+run "curl", "http://localhost:3000/health"
+
+# Clean up
+server.kill(:TERM)
+result = server.result  # Wait for exit
+```
+
+### `exec!` - Replace Process
+
+Replaces the current process. Use sparingly.
+
+```ruby
+exec! "vim", filename
+# This line never executes
+```
+
+### `shell` / `shell?` - Shell Execution
+
+When you need shell features (pipes, globs, variable expansion).
+
+```ruby
+# Pipes and variables
+shell "grep TODO **/*.rb | wc -l"
+shell "echo $HOME"
+
+# Test with shell
+if shell? "command -v docker"
+  shell "docker compose up -d"
+end
+```
+
+**Security note:** Never interpolate untrusted input into shell commands.
+
+### `ruby` - Ruby Subprocess
+
+Run Ruby with clean environment.
+
+```ruby
+ruby "-e", "puts RUBY_VERSION"
+ruby "script.rb", "--verbose"
+```
+
+### `tool` - Run Another dx Tool
+
+Invoke another devex tool programmatically.
+
+```ruby
+tool "lint", "--fix"
+
+if tool?("test")
+  tool "deploy"
+end
+
+# Capture tool output
+result = tool "version", capture: true
+```
+
+Propagates call tree so child tool knows it was invoked from parent.
+
+### The Result Object
+
+All commands (except `run?`/`shell?`/`exec!`) return a `Result`:
+
+```ruby
+result = run "make", "test"
+
+# Status
+result.success?     # exit_code == 0
+result.failed?      # exit_code != 0 or didn't start
+result.signaled?    # killed by signal
+result.timed_out?   # killed due to timeout
+
+# Info
+result.command      # ["make", "test"]
+result.exit_code    # 0-255 or nil if signaled
+result.pid          # Process ID
+result.duration     # Seconds elapsed
+
+# Output (if captured)
+result.stdout       # String or nil
+result.stderr       # String or nil
+result.stdout_lines # Array of lines
+
+# Monad operations
+result.exit_on_failure!           # Exit process if failed
+result.then { run("next") }       # Chain if successful
+result.map { |out| out.strip }    # Transform stdout
+```
+
+### The Controller Object
+
+`spawn` returns a `Controller` for managing background processes:
+
+```ruby
+ctrl = spawn "server"
+
+ctrl.pid          # Process ID
+ctrl.executing?   # Still running?
+ctrl.elapsed      # Seconds since start
+
+ctrl.kill(:TERM)  # Send signal
+ctrl.terminate    # TERM + wait
+
+ctrl.result       # Wait and get Result
+ctrl.result(timeout: 30)  # With timeout
+```
+
+### Common Options
+
+```ruby
+run "command",
+  env: { KEY: "value" },    # Additional environment variables
+  chdir: "subdir/",         # Working directory
+  timeout: 30,              # Seconds before killing
+  raw: true,                # Skip environment stack
+  bundle: false,            # Skip bundle exec wrapping
+  clean_env: true           # Clean bundler pollution (default)
+```
+
+---
+
+## Directory Context
+
+Devex provides a rich directory context system for tools that need to work with project paths.
+
+### Core Directories (`Devex::Dirs`)
+
+```ruby
+# Where dx was invoked from
+Devex::Dirs.invoked_dir    # => Path
+
+# The destination directory (usually same as invoked_dir)
+Devex::Dirs.dest_dir       # => Path
+
+# Project root (found by walking up looking for markers)
+Devex::Dirs.project_dir    # => Path
+
+# Where devex gem itself lives
+Devex::Dirs.dx_src_dir     # => Path
+
+# Is this inside a project?
+Devex::Dirs.in_project?    # => true/false
+```
+
+Project markers searched (in order): `.dx.yml`, `.dx/`, `.git`, `Gemfile`, `Rakefile`, `.devex.yml`
+
+### Project Paths (`Devex::ProjectPaths`)
+
+Lazy path resolution with fail-fast feedback:
+
+```ruby
+prj = Devex::ProjectPaths.new(root: Devex::Dirs.project_dir)
+
+# Standard paths (raises if not found)
+prj.root      # => /path/to/project
+prj.lib       # => /path/to/project/lib
+prj.src       # => /path/to/project/src
+prj.bin       # => /path/to/project/bin
+prj.exe       # => /path/to/project/exe
+
+# Paths with alternatives (tries each in order)
+prj.test      # => finds test/, spec/, or tests/
+prj.docs      # => finds docs/ or doc/
+
+# Glob from root
+prj["*.rb"]           # => Array of Path objects
+prj["lib/**/*.rb"]    # => Array of Path objects
+
+# Config detection (simple vs organized mode)
+prj.config    # => .dx.yml or .dx/config.yml
+prj.tools     # => tools/ or .dx/tools/
+
+# Version file detection
+prj.version   # => VERSION, version.rb, or similar
+
+# Check mode
+prj.organized_mode?  # => true if .dx/ directory exists
+```
+
+### Working Directory Context
+
+Immutable working directory for command execution:
+
+```ruby
+include Devex::WorkingDirMixin
+
+def run
+  # Current working directory
+  working_dir  # => Path to current context
+
+  # Execute block in different directory
+  within "packages/core" do
+    working_dir  # => /project/packages/core
+    run "npm", "test"  # Runs from packages/core
+  end
+
+  working_dir  # => /project (unchanged)
+
+  # Nest as deep as needed
+  within "apps" do
+    within "web" do
+      run "yarn", "build"
+    end
+  end
+
+  # Use with project paths
+  within prj.test do
+    run "rspec"
+  end
+end
+```
+
+The `within` block:
+- Takes relative or absolute paths
+- Restores directory on block exit (even if exception)
+- Thread-safe via mutex
+- Passes directory to spawned commands via `chdir:`
+
+### The Path Class
+
+All directory methods return `Devex::Support::Path` objects:
+
+```ruby
+path = Devex::Support::Path["/some/path"]
+path = Devex::Support::Path.pwd
+
+# Navigation (returns new Path, immutable)
+path / "subdir"           # => Path to /some/path/subdir
+path.parent               # => Path to /some
+path.join("a", "b")       # => Path to /some/path/a/b
+
+# Queries
+path.exist?
+path.file?
+path.directory?
+path.readable?
+path.writable?
+path.executable?
+path.absolute?
+path.relative?
+path.empty?               # Empty file or empty directory
+
+# File operations
+path.read                 # => String contents
+path.write("content")
+path.append("more")
+path.touch
+path.mkdir
+path.mkdir_p
+path.rm
+path.rm_rf
+path.cp(dest)
+path.mv(dest)
+
+# Metadata
+path.basename             # => "path"
+path.extname              # => ".rb"
+path.dirname              # => Path to parent
+path.expand               # => Expanded Path
+path.realpath             # => Resolved symlinks
+
+# Enumeration
+path.children             # => Array of Paths
+path.glob("**/*.rb")      # => Array of Paths
+path.find { |p| ... }     # Recursive find
+
+# Conversion
+path.to_s                 # => "/some/path"
+path.to_str               # => "/some/path" (implicit)
+```
+
+---
+
 ## Runtime Context
 
 ### Detecting Environment
@@ -295,6 +668,76 @@ The `Output.error` method automatically adapts to context.
 - `1` - General error
 - `2` - Usage/argument error
 
+### Command Execution Errors
+
+Commands return `Result` objects instead of raising exceptions:
+
+```ruby
+result = run "might_fail"
+
+if result.failed?
+  if result.exception
+    # Command failed to start (not found, permission denied)
+    Output.error "Command failed to start: #{result.exception.message}"
+  else
+    # Command ran but returned non-zero
+    Output.error "Command failed with exit code #{result.exit_code}"
+  end
+  exit 1
+end
+```
+
+---
+
+## Support Library
+
+### Core Extensions (Refinements)
+
+Enable Ruby refinements for cleaner code:
+
+```ruby
+using Devex::Support::CoreExt
+
+# String
+"hello".present?      # => true
+"".blank?             # => true
+"HELLO".underscore    # => "hello"
+"hello".titleize      # => "Hello"
+
+# Array/Hash
+[].blank?             # => true
+{ a: 1 }.present?     # => true
+
+# Enumerable
+[1, 2, 3].average     # => 2.0
+[1, 2, 3].sum_by { |x| x * 2 }  # => 12
+
+# Numeric
+5.clamp(1, 3)         # => 3
+5.positive?           # => true
+```
+
+Or load globally (for tools that prefer it):
+
+```ruby
+Devex::Support::Global.load!
+```
+
+### ANSI Colors
+
+Direct access to terminal colors:
+
+```ruby
+Devex::Support::ANSI["Hello", :green]
+Devex::Support::ANSI["Error", :red, :bold]
+Devex::Support::ANSI["Text", :white, bg: :blue]
+
+# Check if colors enabled
+Devex::Support::ANSI.enabled?
+Devex::Support::ANSI.disable!
+Devex::Support::ANSI.enable!
+```
+
 ---
 
 ## Accessing CLI State
@@ -312,7 +755,11 @@ end
 
 ```ruby
 def run
-  # Run another tool programmatically
+  # Via the tool() method (recommended - tracks call tree)
+  tool "test"
+  tool "lint", "--fix"
+
+  # Legacy method
   run_tool("test")
   run_tool("lint", "--fix")
 end
@@ -378,6 +825,9 @@ DESC
 flag :fix, "--fix", desc: "Automatically fix issues"
 flag :strict, "--strict", desc: "Fail on warnings"
 
+include Devex::Exec
+include Devex::WorkingDirMixin
+
 def run
   results = {
     checks: [],
@@ -386,9 +836,25 @@ def run
     warnings: 0
   }
 
-  # Run checks...
-  results[:checks] << { name: "syntax", status: "passed" }
-  results[:passed] += 1
+  # Run tests
+  within prj.test do
+    result = capture "rspec", "--format", "json"
+    if result.success?
+      results[:passed] += 1
+      results[:checks] << { name: "tests", status: "passed" }
+    else
+      results[:failed] += 1
+      results[:checks] << { name: "tests", status: "failed" }
+    end
+  end
+
+  # Run linter
+  if run? "which", "rubocop"
+    result = run "rubocop", *(fix ? ["--autocorrect"] : [])
+    status = result.success? ? "passed" : "failed"
+    results[:checks] << { name: "lint", status: status }
+    result.success? ? results[:passed] += 1 : results[:failed] += 1
+  end
 
   # Output based on format
   case output_format
@@ -421,13 +887,27 @@ end
 
 | Interface | Purpose |
 |-----------|---------|
+| **Context** | |
 | `Devex::Context.*` | Runtime detection (agent, CI, env, call tree) |
+| `Devex::Dirs.*` | Core directories (invoked, project, dest) |
+| `Devex::ProjectPaths` | Lazy project path resolution |
+| `Devex::WorkingDirMixin` | Working directory context |
+| **Execution** | |
+| `Devex::Exec` | Command execution (run, capture, spawn, etc.) |
+| `Devex::Exec::Result` | Command result with monad operations |
+| `Devex::Exec::Controller` | Background process management |
+| **Output** | |
 | `Devex::Output.*` | Styled output, structured data |
 | `Devex.render_template(name, locals)` | Render ERB template |
+| **Support** | |
+| `Devex::Support::Path` | Immutable path operations |
+| `Devex::Support::ANSI` | Terminal colors |
+| `Devex::Support::CoreExt` | Ruby refinements |
+| **Tool Runtime** | |
 | `output_format` | Effective format (:text, :json, :yaml) |
 | `verbose?`, `quiet?` | Global verbosity flags |
 | `cli.project_root` | Project root path |
-| `run_tool(name, *args)` | Invoke another tool |
+| `tool(name, *args)` | Invoke another tool |
 | `builtin` | Access overridden built-in |
 | `options` | Tool-specific flag/arg values |
 | `global_options` | Global flag values |

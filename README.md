@@ -7,10 +7,11 @@ A lightweight, zero-heavy-dependency Ruby CLI providing a unified `dx` command f
 ## Vision
 
 - **Single entry point**: `dx` command for all dev tasks
-- **Zero heavy dependencies**: Core depends only on Ruby stdlib + paint + tty-prompt
+- **Zero-dependency core**: Support library uses only Ruby stdlib
 - **Project-local tasks**: Override or extend built-ins with `tasks/*.rb`
 - **Agent-aware**: Automatically detects AI agent invocation and adapts output
 - **Environment-aware**: Rails-style environment detection (dev/test/staging/prod)
+- **Command execution**: Clean subprocess management with environment orchestration
 
 ## Installation
 
@@ -48,11 +49,13 @@ Create a `tasks/` directory in your project root with Ruby files:
 desc "Deploy to production"
 flag :dry_run, "-n", "--dry-run", desc: "Show what would be deployed"
 
+include Devex::Exec
+
 def run
   if dry_run
-    puts "Would deploy..."
+    $stdout.puts "Would deploy..."
   else
-    # actual deployment
+    run("./scripts/deploy.sh").exit_on_failure!
   end
 end
 ```
