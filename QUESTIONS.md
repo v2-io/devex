@@ -20,7 +20,7 @@
 - `cli.run()` to invoke other tools
 - Help generation (`--help`)
 
-**What archema DOESN'T use:**
+**What archema DOESN'T use currently:**
 - The `:exec` mixin functionality (uses plain `system()` instead!)
 - Shell completion
 - Complex acceptors/validators
