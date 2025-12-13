@@ -27,6 +27,10 @@ if from_dir
   Devex::Dirs.dest_dir = File.expand_path(from_dir)
 end
 
+# Check for .dx-use-local and delegate to bundled dx if present
+# This ensures version consistency when a project pins a specific devex version
+Devex::Dirs.maybe_delegate_to_local!
+
 cli = Devex::CLI.new(executable_name: "dx")
 
 # Load built-in tools

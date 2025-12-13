@@ -17,7 +17,7 @@ Updated: 2025-12-13
 - `Dirs.dest_dir=` method exists but cli.rb doesn't parse the flag
 - Files: `lib/devex/cli.rb`, `exe/dx`
 
-### [ ] Wire up `.dx-use-local` delegation
+### [x] Wire up `.dx-use-local` delegation (DONE)
 - `Dirs.maybe_delegate_to_local!` exists but is never called
 - Should be called early in `exe/dx` after project discovery
 - File: `exe/dx`
