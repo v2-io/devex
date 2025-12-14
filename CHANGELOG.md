@@ -2,6 +2,18 @@
 
 All notable changes to devex will be documented in this file.
 
+## [0.3.4] - 2025-12-13
+
+### Added
+- `prj.linter` convention in ProjectPaths - finds .standard.yml or .rubocop.yml
+- `Path#rm`, `Path#delete`, `Path#unlink` - delete a file
+- `Path#rm_rf` - delete directory recursively
+
+### Changed
+- Built-ins now fully trust ProjectPaths fail-fast behavior - no more rescue/re-error patterns
+- `dx lint` and `dx format` use `prj.linter` instead of manual detection
+- `dx test` uses `prj.test`, `dx gem` uses `prj.gemspec` - all with clean fail-fast
+
 ## [0.3.3] - 2025-12-13
 
 ### Fixed

@@ -263,6 +263,20 @@ module Devex
         self
       end
 
+      # Delete file (no-op if doesn't exist)
+      def rm
+        File.delete(to_s) if file?
+        self
+      end
+      alias delete rm
+      alias unlink rm
+
+      # Delete directory recursively (no-op if doesn't exist)
+      def rm_rf
+        FileUtils.rm_rf(to_s) if exist?
+        self
+      end
+
       # ─────────────────────────────────────────────────────────────
       # Modification Time Comparisons
       # ─────────────────────────────────────────────────────────────
