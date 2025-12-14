@@ -16,9 +16,7 @@ Minitest::Reporters.use! [
 module EnvHelper
   # Run a block with modified environment variables, restoring them after.
   # Uses climate_control for safe manipulation.
-  def with_env(env_vars, &block)
-    ClimateControl.modify(env_vars, &block)
-  end
+  def with_env(env_vars, &) = ClimateControl.modify(env_vars, &)
 
   # Clear all DX/DEVEX environment variables before a test
   def clear_dx_env

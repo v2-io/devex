@@ -22,7 +22,7 @@ end
 def read_version(file)
   content = File.read(file)
   if content =~ VERSION_REGEX
-    $1
+    Regexp.last_match(1)
   else
     content.strip
   end
@@ -49,8 +49,7 @@ def bump_version(version, type)
   when "minor"
     parts[1] += 1
     parts[2] = 0
-  when "patch"
-    parts[2] += 1
+  when "patch" then parts[2] += 1
   end
 
   parts.join(".")
@@ -66,8 +65,7 @@ def version_output(data)
   fmt = respond_to?(:output_format) ? output_format : :text
 
   case fmt
-  when :json, :yaml
-    Devex::Output.data(data, format: fmt)
+  when :json, :yaml then Devex::Output.data(data, format: fmt)
   else
     text = if data[:old_version] && data[:new_version]
              "#{data[:old_version]} → #{data[:new_version]}"
@@ -85,9 +83,7 @@ desc "Show or manage version"
 def run
   version_data = if cli.project_root
                    version_file = find_version_file(cli.project_root)
-                   if version_file
-                     { version: read_version(version_file), source: "project", file: version_file }
-                   end
+                   { version: read_version(version_file), source: "project", file: version_file } if version_file
                  end
 
   version_data ||= { version: Devex::VERSION, source: "devex" }
@@ -110,18 +106,12 @@ tool "bump" do
   required_arg :type, desc: "Version component: major, minor, or patch"
 
   def run
-    unless %w[major minor patch].include?(type)
-      version_error("Invalid version type '#{type}'. Use: major, minor, or patch")
-    end
+    version_error("Invalid version type '#{type}'. Use: major, minor, or patch") unless %w[major minor patch].include?(type)
 
-    unless cli.project_root
-      version_error("Not in a project directory")
-    end
+    version_error("Not in a project directory") unless cli.project_root
 
     version_file = find_version_file(cli.project_root)
-    unless version_file
-      version_error("Could not find version file")
-    end
+    version_error("Could not find version file") unless version_file
 
     old_version = read_version(version_file)
     new_version = bump_version(old_version, type)
@@ -139,18 +129,12 @@ tool "set" do
   required_arg :version, desc: "Version string (e.g., 1.0.0)"
 
   def run
-    unless version.match?(/^\d+\.\d+\.\d+/)
-      version_error("Invalid version format '#{version}'. Use semantic versioning: MAJOR.MINOR.PATCH")
-    end
+    version_error("Invalid version format '#{version}'. Use semantic versioning: MAJOR.MINOR.PATCH") unless version.match?(/^\d+\.\d+\.\d+/)
 
-    unless cli.project_root
-      version_error("Not in a project directory")
-    end
+    version_error("Not in a project directory") unless cli.project_root
 
     version_file = find_version_file(cli.project_root)
-    unless version_file
-      version_error("Could not find version file")
-    end
+    version_error("Could not find version file") unless version_file
 
     old_version = read_version(version_file)
     write_version(version_file, old_version, version)

@@ -8,15 +8,15 @@ class ControllerTest < Minitest::Test
   def test_pid_available_immediately
     ctrl = start_sleep(10)
     assert_kind_of Integer, ctrl.pid
-    assert ctrl.pid > 0
+    assert_operator ctrl.pid, :>, 0
   ensure
     cleanup(ctrl)
   end
 
   def test_executing_true_while_running
     ctrl = start_sleep(10)
-    assert ctrl.executing?
-    assert ctrl.running?
+    assert_predicate ctrl, :executing?
+    assert_predicate ctrl, :running?
   ensure
     cleanup(ctrl)
   end
@@ -24,28 +24,28 @@ class ControllerTest < Minitest::Test
   def test_finished_after_completion
     ctrl = start_true
     ctrl.result
-    assert ctrl.finished?
-    refute ctrl.executing?
+    assert_predicate ctrl, :finished?
+    refute_predicate ctrl, :executing?
   end
 
   def test_elapsed_increases
-    ctrl = start_sleep(10)
+    ctrl    = start_sleep(10)
     initial = ctrl.elapsed
     sleep 0.05
-    assert ctrl.elapsed > initial
+    assert_operator ctrl.elapsed, :>, initial
   ensure
     cleanup(ctrl)
   end
 
   def test_kill_stops_process
     ctrl = start_sleep(10)
-    assert ctrl.executing?
+    assert_predicate ctrl, :executing?
 
     killed = ctrl.kill(:TERM)
     assert killed
 
     result = ctrl.result(timeout: 2)
-    refute result.success?
+    refute_predicate result, :success?
     assert result.signaled? || result.exit_code
   end
 
@@ -58,32 +58,32 @@ class ControllerTest < Minitest::Test
   end
 
   def test_terminate_sends_term_then_waits
-    ctrl = start_sleep(10)
+    ctrl   = start_sleep(10)
     result = ctrl.terminate(timeout: 2)
     assert_kind_of Devex::Exec::Result, result
-    refute ctrl.executing?
+    refute_predicate ctrl, :executing?
   end
 
   def test_result_returns_result_object
-    ctrl = start_true
+    ctrl   = start_true
     result = ctrl.result
 
     assert_kind_of Devex::Exec::Result, result
-    assert result.success?
+    assert_predicate result, :success?
   end
 
   def test_result_with_exit_code
-    ctrl = start_false
+    ctrl   = start_false
     result = ctrl.result
 
     assert_kind_of Devex::Exec::Result, result
-    refute result.success?
+    refute_predicate result, :success?
     assert_equal 1, result.exit_code
   end
 
   def test_result_cached_after_first_call
-    ctrl = start_true
-    first = ctrl.result
+    ctrl   = start_true
+    first  = ctrl.result
     second = ctrl.result
 
     assert_same first, second
@@ -108,9 +108,9 @@ class ControllerTest < Minitest::Test
 
   def test_name_optional
     ctrl = Devex::Exec::Controller.new(
-      pid: 12345,
+      pid:     12_345,
       command: "test",
-      name: "my-test"
+      name:    "my-test"
     )
     assert_equal "my-test", ctrl.name
   end
@@ -124,7 +124,7 @@ class ControllerTest < Minitest::Test
   end
 
   def test_inspect_shows_details
-    ctrl = start_true
+    ctrl      = start_true
     inspected = ctrl.inspect
 
     assert_includes inspected, "Controller"
@@ -144,16 +144,16 @@ class ControllerTest < Minitest::Test
     # Create a process that reads from stdin and echoes
     pid = Process.spawn(
       "cat",
-      in: (stdin_r = IO.pipe[0]),
+      in:  (stdin_r = IO.pipe[0]),
       out: "/dev/null",
       err: "/dev/null"
     )
     stdin_w = IO.pipe[1]
 
     ctrl = Devex::Exec::Controller.new(
-      pid: pid,
+      pid:     pid,
       command: "cat",
-      stdin: stdin_w
+      stdin:   stdin_w
     )
 
     # Verify we can write (even though we won't read it back in this test)
@@ -167,7 +167,7 @@ class ControllerTest < Minitest::Test
 
   def test_write_raises_without_stdin_pipe
     ctrl = Devex::Exec::Controller.new(
-      pid: 12345,
+      pid:     12_345,
       command: "test"
     )
 
@@ -196,16 +196,32 @@ class ControllerTest < Minitest::Test
   def cleanup(ctrl)
     return unless ctrl
 
-    if ctrl.executing?
-      ctrl.kill(:KILL) rescue nil
-      ctrl.result(timeout: 1) rescue nil
+    return unless ctrl.executing?
+
+    begin
+      ctrl.kill(:KILL)
+    rescue StandardError
+      nil
+    end
+    begin
+      ctrl.result(timeout: 1)
+    rescue StandardError
+      nil
     end
   end
 
   def cleanup_pid(pid)
     return unless pid
 
-    Process.kill(:KILL, pid) rescue nil
-    Process.wait(pid) rescue nil
+    begin
+      Process.kill(:KILL, pid)
+    rescue StandardError
+      nil
+    end
+    begin
+      Process.wait(pid)
+    rescue StandardError
+      nil
+    end
   end
 end

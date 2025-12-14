@@ -5,37 +5,21 @@ module Devex
   class DSL
     attr_reader :tool
 
-    def initialize(tool)
-      @tool = tool
-    end
+    def initialize(tool) = @tool = tool
 
-    def desc(text)
-      @tool.desc = text
-    end
+    def desc(text) = @tool.desc = text
 
-    def long_desc(text)
-      @tool.long_desc = text
-    end
+    def long_desc(text) = @tool.long_desc = text
 
-    def flag(name, *specs, desc: nil, default: nil)
-      @tool.flag(name, *specs, desc: desc, default: default)
-    end
+    def flag(name, *specs, desc: nil, default: nil) = @tool.flag(name, *specs, desc: desc, default: default)
 
-    def required_arg(name, desc: nil)
-      @tool.required_arg(name, desc: desc)
-    end
+    def required_arg(name, desc: nil) = @tool.required_arg(name, desc: desc)
 
-    def optional_arg(name, desc: nil, default: nil)
-      @tool.optional_arg(name, desc: desc, default: default)
-    end
+    def optional_arg(name, desc: nil, default: nil) = @tool.optional_arg(name, desc: desc, default: default)
 
-    def remaining_args(name, desc: nil)
-      @tool.remaining_args(name, desc: desc)
-    end
+    def remaining_args(name, desc: nil) = @tool.remaining_args(name, desc: desc)
 
-    def include(name)
-      @tool.include_mixin(name)
-    end
+    def include(name) = @tool.include_mixin(name)
 
     def tool(name, &block)
       subtool = Tool.new(name, parent: @tool)
@@ -48,9 +32,7 @@ module Devex
       subtool
     end
 
-    def to_run(&block)
-      @tool.run_block = block
-    end
+    def to_run(&block) = @tool.run_block = block
   end
 
   # Evaluates task files and captures tool definitions
@@ -70,37 +52,21 @@ module Devex
 
   # Context for parsing DSL declarations (not execution)
   class DSLContext
-    def initialize(tool)
-      @tool = tool
-    end
+    def initialize(tool) = @tool = tool
 
-    def desc(text)
-      @tool.desc = text
-    end
+    def desc(text) = @tool.desc = text
 
-    def long_desc(text)
-      @tool.long_desc = text
-    end
+    def long_desc(text) = @tool.long_desc = text
 
-    def flag(name, *specs, desc: nil, default: nil)
-      @tool.flag(name, *specs, desc: desc, default: default)
-    end
+    def flag(name, *specs, desc: nil, default: nil) = @tool.flag(name, *specs, desc: desc, default: default)
 
-    def required_arg(name, desc: nil)
-      @tool.required_arg(name, desc: desc)
-    end
+    def required_arg(name, desc: nil) = @tool.required_arg(name, desc: desc)
 
-    def optional_arg(name, desc: nil, default: nil)
-      @tool.optional_arg(name, desc: desc, default: default)
-    end
+    def optional_arg(name, desc: nil, default: nil) = @tool.optional_arg(name, desc: desc, default: default)
 
-    def remaining_args(name, desc: nil)
-      @tool.remaining_args(name, desc: desc)
-    end
+    def remaining_args(name, desc: nil) = @tool.remaining_args(name, desc: desc)
 
-    def include(name)
-      @tool.include_mixin(name)
-    end
+    def include(name) = @tool.include_mixin(name)
 
     def tool(name, &block)
       subtool = Tool.new(name, parent: @tool)
@@ -117,19 +83,15 @@ module Devex
       subtool
     end
 
-    def to_run(&block)
-      @tool.run_block = block
-    end
+    def to_run(&block) = @tool.run_block = block
 
     # Capture def statements - they become the tool's methods
     # We use method_missing to collect method names, but can't capture the bodies
     # Instead, we mark that the tool has a run method and will re-eval at runtime
-    def method_missing(name, *args, &block)
+    def method_missing(name, *args, &)
       # Silently ignore - methods will be available at runtime via re-eval
     end
 
-    def respond_to_missing?(name, include_private = false)
-      true
-    end
+    def respond_to_missing?(_name, _include_private = false) = true
   end
 end

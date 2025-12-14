@@ -54,7 +54,7 @@ module Devex
         info:     [0x6B, 0xC5, 0xFF],  # Blue
         header:   [0xC4, 0xB5, 0xFD],  # Purple
         muted:    [0x88, 0x88, 0x88],  # Gray
-        emphasis: [0xFF, 0xFF, 0xFF],  # White
+        emphasis: [0xFF, 0xFF, 0xFF]  # White
       }.freeze
 
       # Basic ANSI colors (for 16-color mode fallback)
@@ -65,7 +65,7 @@ module Devex
         # Bright variants
         bright_black: 90,  bright_red:     91, bright_green: 92,
         bright_yellow: 93, bright_blue:    94, bright_magenta: 95,
-        bright_cyan:   96, bright_white:   97,
+        bright_cyan:   96, bright_white:   97
       }.freeze
 
       # Style codes
@@ -77,7 +77,7 @@ module Devex
         blink:     5,
         reverse:   7,  inverse:   7,
         hidden:    8,  conceal:   8,
-        strike:    9,  crossed:   9,
+        strike:    9,  crossed:   9
       }.freeze
 
       # Map semantic colors to basic ANSI for 16-color mode
@@ -88,19 +88,20 @@ module Devex
         info:     :bright_blue,
         header:   :bright_magenta,
         muted:    :white,
-        emphasis: :bright_white,
+        emphasis: :bright_white
       }.freeze
 
       class << self
         # Color mode: 0xFFFFFF (truecolor), 256, 16, or 0 (disabled)
         # nil means auto-detect
         def mode=(value)
-          @mode = value
+          @mode  = value
           @cache = {} # Clear cache on mode change
         end
 
         def mode
           return @mode if defined?(@mode) && @mode
+
           detect_mode
         end
 
@@ -121,9 +122,7 @@ module Devex
         end
 
         # Check if colors are enabled
-        def enabled?
-          mode > 0
-        end
+        def enabled? = mode > 0
 
         # ─────────────────────────────────────────────────────────────
         # Main API: ANSI["text", :bold, :success]
@@ -151,9 +150,10 @@ module Devex
 
           # Build cache key from options (include bg in key for caching, pass separately for processing)
           cache_key = bg ? [args, bg].freeze : args.freeze
-          prefix = cached_prefix(args, bg, cache_key)
+          prefix    = cached_prefix(args, bg, cache_key)
 
           return text if prefix.empty?
+
           "#{prefix}#{text}#{RESET}"
         end
 
@@ -192,7 +192,7 @@ module Devex
           substitutions = args.last.is_a?(Hash) ? args.pop : nil
 
           # Get the color sequence for this level
-          cache_key = args.freeze
+          cache_key     = args.freeze
           current_color = cached_prefix(args, nil, cache_key)
 
           # Process substitutions recursively
@@ -223,24 +223,16 @@ module Devex
         # ─────────────────────────────────────────────────────────────
 
         # Truecolor (24-bit) foreground
-        def color(text, r, g, b)
-          self[text, [r, g, b]]
-        end
+        def color(text, r, g, b) = self[text, [r, g, b]]
 
         # Truecolor (24-bit) background
-        def background(text, r, g, b)
-          self[text, bg: [r, g, b]]
-        end
+        def background(text, r, g, b) = self[text, bg: [r, g, b]]
 
         # Hex color foreground: ANSI.hex("text", "#5AF78E")
-        def hex(text, hex_color)
-          self[text, hex_color]
-        end
+        def hex(text, hex_color) = self[text, hex_color]
 
         # Named semantic color
-        def named(text, name)
-          self[text, name]
-        end
+        def named(text, name) = self[text, name]
 
         # ─────────────────────────────────────────────────────────────
         # Style Methods
@@ -260,30 +252,20 @@ module Devex
         # ─────────────────────────────────────────────────────────────
 
         # Strip ANSI codes from text
-        def strip(text)
-          text.to_s.gsub(/\e\[[0-9;]*m/, "")
-        end
+        def strip(text) = text.to_s.gsub(/\e\[[0-9;]*m/, "")
 
         # Calculate visible length (without ANSI codes)
-        def visible_length(text)
-          strip(text).length
-        end
+        def visible_length(text) = strip(text).length
 
         # Raw escape sequence without text wrapping.
         # Useful for building custom sequences or streaming output.
-        def esc(*args)
-          cached_prefix(args, nil, args.freeze)
-        end
+        def esc(*args) = cached_prefix(args, nil, args.freeze)
 
         # Reset sequence
-        def reset
-          RESET
-        end
+        def reset = RESET
 
         # Clear the escape sequence cache
-        def clear_cache!
-          @cache = {}
-        end
+        def clear_cache! = @cache = {}
 
         private
 
@@ -309,15 +291,14 @@ module Devex
               codes << code if code
             end
 
-            codes.empty? ? "" : "\e[#{codes.join(";")}m"
+            codes.empty? ? "" : "\e[#{codes.join(';')}m"
           end
         end
 
         # Resolve an argument to ANSI code(s)
         def resolve_code(arg, foreground:)
           case arg
-          when Symbol
-            resolve_symbol(arg, foreground)
+          when Symbol then resolve_symbol(arg, foreground)
           when Array
             # RGB array
             rgb_code(*arg, foreground: foreground)
@@ -349,9 +330,7 @@ module Devex
           hex_str = hex_str.delete_prefix("#")
 
           # Expand 3-char hex: "FFF" -> "FFFFFF"
-          if hex_str.length == 3
-            hex_str = hex_str.chars.map { |c| c * 2 }.join
-          end
+          hex_str = hex_str.chars.map { |c| c * 2 }.join if hex_str.length == 3
 
           return nil unless hex_str.length == 6
 
@@ -375,8 +354,6 @@ module Devex
             # 16-color: find nearest basic color
             basic = rgb_to_basic(r, g, b)
             foreground ? basic : basic + 10
-          else
-            nil
           end
         end
 
@@ -386,6 +363,7 @@ module Devex
           if r == g && g == b
             return 16 if r < 8
             return 231 if r > 248
+
             return ((r - 8) / 10.0).round + 232
           end
 
@@ -397,24 +375,24 @@ module Devex
         def rgb_to_basic(r, g, b)
           # Simple brightness-based mapping
           bright = (r + g + b) > 382
-          base = 30
+          base   = 30
 
           # Determine primary color
-          if r > g && r > b
-            base += 1  # red
-          elsif g > r && g > b
-            base += 2  # green
-          elsif b > r && b > g
-            base += 4  # blue
-          elsif r > b
-            base += 3  # yellow (r+g)
-          elsif g > r
-            base += 6  # cyan (g+b)
-          elsif r > g
-            base += 5  # magenta (r+b)
-          else
-            base += 7  # white/gray
-          end
+          base += if r > g && r > b
+                    1  # red
+                  elsif g > r && g > b
+                    2  # green
+                  elsif b > r && b > g
+                    4  # blue
+                  elsif r > b
+                    3  # yellow (r+g)
+                  elsif g > r
+                    6  # cyan (g+b)
+                  elsif r > g
+                    5  # magenta (r+b)
+                  else
+                    7  # white/gray
+                  end
 
           bright ? base + 60 : base
         end
@@ -424,28 +402,18 @@ module Devex
       module StringMethods
         refine String do
           # Primary interface: "text".ansi(:bold, :success)
-          def ansi(*styles, bg: nil)
-            ANSI[self, *styles, bg: bg]
-          end
+          def ansi(*styles, bg: nil) = ANSI[self, *styles, bg: bg]
 
           # RGB colors
-          def color(r, g, b)
-            ANSI.color(self, r, g, b)
-          end
+          def color(r, g, b) = ANSI.color(self, r, g, b)
 
-          def background(r, g, b)
-            ANSI.background(self, r, g, b)
-          end
+          def background(r, g, b) = ANSI.background(self, r, g, b)
 
           # Hex color: "text".hex("#5AF78E")
-          def hex(hex_color)
-            ANSI.hex(self, hex_color)
-          end
+          def hex(hex_color) = ANSI.hex(self, hex_color)
 
           # Named semantic color: "text".named(:success)
-          def named(name)
-            ANSI.named(self, name)
-          end
+          def named(name) = ANSI.named(self, name)
 
           # Style shortcuts
           def bold      = ANSI.bold(self)
@@ -458,14 +426,10 @@ module Devex
           def strike    = ANSI.strike(self)
 
           # Strip ANSI codes
-          def strip_ansi
-            ANSI.strip(self)
-          end
+          def strip_ansi = ANSI.strip(self)
 
           # Visible length without ANSI codes
-          def visible_length
-            ANSI.visible_length(self)
-          end
+          def visible_length = ANSI.visible_length(self)
         end
       end
     end

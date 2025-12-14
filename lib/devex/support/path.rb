@@ -46,33 +46,26 @@ module Devex
     class Path < Pathname
       class << self
         # Construct from string: Path["~/src/project"]
-        def [](path)
-          new(expand_user(path.to_s))
-        end
+        def [](path) = new(expand_user(path.to_s))
 
         # Current working directory
-        def pwd
-          new(Dir.pwd)
-        end
-        alias_method :cwd, :pwd
-        alias_method :getwd, :pwd
+        def pwd = new(Dir.pwd)
+        alias cwd pwd
+        alias getwd pwd
 
         # Home directory
-        def home
-          new(Dir.home)
-        end
+        def home = new(Dir.home)
 
         # Temporary directory
-        def tmp
-          new(Dir.tmpdir)
-        end
-        alias_method :tmpdir, :tmp
+        def tmp = new(Dir.tmpdir)
+        alias tmpdir tmp
 
         private
 
         # Expand ~ and ~user in path strings
         def expand_user(path)
           return path unless path.start_with?("~")
+
           File.expand_path(path)
         end
       end
@@ -82,13 +75,12 @@ module Devex
       # ─────────────────────────────────────────────────────────────
 
       # Division operator for path joining: path / "subdir" / "file.rb"
-      def /(other)
-        self.class.new(join(other.to_s))
-      end
+      def /(other) = self.class.new(join(other.to_s))
 
       # Override join to return Path
       def join(*args)
         return self if args.empty?
+
         self.class.new(super(*args.map(&:to_s)))
       end
 
@@ -110,21 +102,17 @@ module Devex
 
       def dir?     = directory?
       def missing? = !exist?
-      alias_method :exists?, :exist?
+      alias exists? exist?
 
       # ActiveSupport-style: returns self if exists, nil otherwise
-      def existence
-        exist? ? self : nil
-      end
+      def existence = exist? ? self : nil
 
       # ─────────────────────────────────────────────────────────────
       # Memoized Expansions
       # ─────────────────────────────────────────────────────────────
 
       # Expanded path (memoized)
-      def exp
-        @exp ||= self.class.new(expand_path)
-      end
+      def exp = @exp ||= self.class.new(expand_path)
 
       # Real path with fallback to expanded (memoized, safe)
       def real
@@ -149,13 +137,11 @@ module Devex
       # @param from [Path, String] Base directory (default: pwd)
       # @param home [Boolean] Substitute ~ for home directory
       def rel(from: nil, home: true)
-        from = self.class.new(from&.to_s || Dir.pwd)
+        from   = self.class.new(from&.to_s || Dir.pwd)
         result = exp.relative_path_from(from.exp)
         result = self.class.new(result)
 
-        if home && Dir.home && result.to_s.start_with?(Dir.home)
-          result = self.class.new(result.to_s.sub(Dir.home, "~"))
-        end
+        result = self.class.new(result.to_s.sub(Dir.home, "~")) if home && Dir.home && result.to_s.start_with?(Dir.home)
         result
       rescue ArgumentError
         # Can't compute relative path (different drives on Windows, etc.)
@@ -168,7 +154,7 @@ module Devex
 
       # Shortest representation of path
       def short(from: nil)
-        from = self.class.new(from&.to_s || Dir.pwd)
+        from       = self.class.new(from&.to_s || Dir.pwd)
         candidates = []
 
         # Try relative from base
@@ -192,8 +178,8 @@ module Devex
 
       # Cache for relative path calculations (expensive operation)
       def relative_path_from(base)
-        @rc ||= {}
-        @rc[base.to_s] ||= self.class.new(super(base))
+        @rc            ||= {}
+        @rc[base.to_s] ||= self.class.new(super)
       end
 
       # ─────────────────────────────────────────────────────────────
@@ -202,24 +188,20 @@ module Devex
 
       # Glob from this directory: path["**/*.rb"]
       def [](pattern, include_dotfiles: true)
-        base = directory? ? self : dirname
+        base  = directory? ? self : dirname
         flags = include_dotfiles ? File::FNM_DOTMATCH : 0
         Pathname.glob((base / pattern).to_s, flags).map { |p| self.class.new(p) }
       end
 
       # Alias for more explicit calls
-      def glob(pattern, **opts)
-        self[pattern, **opts]
-      end
+      def glob(pattern, **) = self[pattern, **]
 
       # ─────────────────────────────────────────────────────────────
       # Directory Operations
       # ─────────────────────────────────────────────────────────────
 
       # Get directory (dirname, but returns self if already a directory)
-      def dir
-        directory? ? exp : self.class.new(dirname)
-      end
+      def dir = directory? ? exp : self.class.new(dirname)
 
       # Create directory (and parents) if missing, return self
       # Safe - returns nil on error instead of raising
@@ -248,12 +230,10 @@ module Devex
         opts = encoding ? { encoding: encoding } : {}
         File.read(to_s, **opts)
       end
-      alias_method :contents, :read
+      alias contents read
 
       # Read as lines
-      def lines(chomp: true)
-        File.readlines(to_s, chomp: chomp)
-      end
+      def lines(chomp: true) = File.readlines(to_s, chomp: chomp)
 
       # Write contents (creates parent directories)
       def write(content, encoding: nil)
@@ -291,6 +271,7 @@ module Devex
         other = self.class[other] unless other.is_a?(Pathname)
         return true unless other.exist?
         return false unless exist?
+
         mtime > other.mtime
       end
 
@@ -298,6 +279,7 @@ module Devex
         other = self.class[other] unless other.is_a?(Pathname)
         return false unless other.exist?
         return true unless exist?
+
         mtime < other.mtime
       end
 
@@ -312,50 +294,38 @@ module Devex
       end
 
       # Remove extension
-      def without_ext
-        self.class.new(to_s.sub(/#{Regexp.escape(extname)}$/, ""))
-      end
+      def without_ext = self.class.new(to_s.sub(/#{Regexp.escape(extname)}$/, ""))
 
       # ─────────────────────────────────────────────────────────────
       # Siblings and Relatives
       # ─────────────────────────────────────────────────────────────
 
       # Sibling with same directory but different name
-      def sibling(name)
-        dir / name.to_s
-      end
+      def sibling(name) = dir / name.to_s
 
       # Override parent to return Path
-      def parent
-        self.class.new(super)
-      end
+      def parent = self.class.new(super)
 
       # Override dirname to return Path
-      def dirname
-        self.class.new(super)
-      end
+      def dirname = self.class.new(super)
 
       # Override basename to return Path
-      def basename(*args)
-        self.class.new(super)
-      end
+      def basename(*args) = self.class.new(super)
 
       # ─────────────────────────────────────────────────────────────
       # Inspection
       # ─────────────────────────────────────────────────────────────
 
-      def inspect
-        "#<Path:#{to_s}>"
-      end
+      def inspect = "#<Path:#{self}>"
 
       # ─────────────────────────────────────────────────────────────
       # String-like Behavior
       # ─────────────────────────────────────────────────────────────
 
       # Delegate string methods to to_s
-      def method_missing(method, *args, &block)
+      def method_missing(method, *, &)
         if to_s.respond_to?(method)
-          result = to_s.send(method, *args, &block)
+          result = to_s.send(method, *, &)
           # Return Path if result looks like a path
           if result.is_a?(String) && result.include?("/")
             self.class.new(result)
@@ -367,9 +337,7 @@ module Devex
         end
       end
 
-      def respond_to_missing?(method, include_private = false)
-        to_s.respond_to?(method, include_private) || super
-      end
+      def respond_to_missing?(method, include_private = false) = to_s.respond_to?(method, include_private) || super
     end
   end
 end

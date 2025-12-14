@@ -19,26 +19,26 @@ module Devex
   #
   module Context
     # Environment variable names we check
-    ENV_AGENT_MODE = %w[DX_AGENT_MODE DEVEX_AGENT_MODE].freeze
-    ENV_BATCH      = %w[DX_BATCH DEVEX_BATCH].freeze
+    ENV_AGENT_MODE  = %w[DX_AGENT_MODE DEVEX_AGENT_MODE].freeze
+    ENV_BATCH       = %w[DX_BATCH DEVEX_BATCH].freeze
     ENV_INTERACTIVE = %w[DX_INTERACTIVE DEVEX_INTERACTIVE].freeze
-    ENV_NO_COLOR   = %w[NO_COLOR DX_NO_COLOR].freeze
+    ENV_NO_COLOR  = %w[NO_COLOR DX_NO_COLOR].freeze
     ENV_FORCE_COLOR = %w[FORCE_COLOR DX_FORCE_COLOR].freeze
 
     # Environment detection (Rails-style)
-    ENV_ENVIRONMENT = %w[DX_ENV DEVEX_ENV RAILS_ENV RACK_ENV].freeze
+    ENV_ENVIRONMENT     = %w[DX_ENV DEVEX_ENV RAILS_ENV RACK_ENV].freeze
     DEFAULT_ENVIRONMENT = "development"
 
     # Canonical environment names and their aliases
     ENVIRONMENT_ALIASES = {
-      "dev" => "development",
+      "dev"     => "development",
       "develop" => "development",
-      "test" => "test",
+      "test"    => "test",
       "testing" => "test",
-      "stage" => "staging",
-      "stg" => "staging",
-      "prod" => "production",
-      "live" => "production"
+      "stage"   => "staging",
+      "stg"     => "staging",
+      "prod"    => "production",
+      "live"    => "production"
     }.freeze
 
     # Call tree tracking - passed via environment between processes
@@ -60,29 +60,23 @@ module Devex
 
     # Thread-local call stack for tracking task invocations within a process
     # Format: Array of task names, e.g., ["pre-commit", "test"]
-    @call_stack = []
+    @call_stack       = []
     @call_stack_mutex = Mutex.new
 
     # Programmatic overrides for testing and debugging
     # Keys: :agent_mode, :interactive, :color, :ci, :terminal, :env
-    @overrides = {}
+    @overrides       = {}
     @overrides_mutex = Mutex.new
 
     class << self
       # Is stdout connected to a terminal?
-      def stdout_tty?
-        $stdout.tty?
-      end
+      def stdout_tty? = $stdout.tty?
 
       # Is stderr connected to a terminal?
-      def stderr_tty?
-        $stderr.tty?
-      end
+      def stderr_tty? = $stderr.tty?
 
       # Is stdin connected to a terminal?
-      def stdin_tty?
-        $stdin.tty?
-      end
+      def stdin_tty? = $stdin.tty?
 
       # Are we in a full interactive terminal? (all three streams are ttys)
       def terminal?
@@ -116,19 +110,13 @@ module Devex
       end
 
       # Is agent mode explicitly enabled via environment?
-      def agent_mode_env?
-        ENV_AGENT_MODE.any? { |var| truthy_env?(var) }
-      end
+      def agent_mode_env? = ENV_AGENT_MODE.any? { |var| truthy_env?(var) }
 
       # Is batch mode explicitly enabled via environment?
-      def batch_mode_env?
-        ENV_BATCH.any? { |var| truthy_env?(var) }
-      end
+      def batch_mode_env? = ENV_BATCH.any? { |var| truthy_env?(var) }
 
       # Is interactive mode explicitly forced via environment?
-      def interactive_forced?
-        ENV_INTERACTIVE.any? { |var| truthy_env?(var) }
-      end
+      def interactive_forced? = ENV_INTERACTIVE.any? { |var| truthy_env?(var) }
 
       # Are we running in a CI environment?
       def ci?
@@ -139,20 +127,14 @@ module Devex
       end
 
       # Is color output explicitly disabled?
-      def no_color?
-        ENV_NO_COLOR.any? { |var| ENV.key?(var) }
-      end
+      def no_color? = ENV_NO_COLOR.any? { |var| ENV.key?(var) }
 
       # Is color output explicitly forced on?
-      def force_color?
-        ENV_FORCE_COLOR.any? { |var| truthy_env?(var) }
-      end
+      def force_color? = ENV_FORCE_COLOR.any? { |var| truthy_env?(var) }
 
       # Is data being piped in or out?
       # True if stdin is not a tty (data piped in) OR stdout is not a tty (data piped out)
-      def piped?
-        !stdin_tty? || !stdout_tty?
-      end
+      def piped? = !stdin_tty? || !stdout_tty?
 
       # --- Composite detection methods ---
 
@@ -201,62 +183,42 @@ module Devex
 
       # Get the current environment name (development, test, staging, production)
       # Checks DX_ENV, DEVEX_ENV, RAILS_ENV, RACK_ENV in that order
-      def env
-        @env ||= detect_environment
-      end
+      def env = @env ||= detect_environment
 
       # Reset cached environment (useful for testing)
-      def reset_env!
-        @env = nil
-      end
+      def reset_env! = @env = nil
 
-      def development?
-        env == "development"
-      end
+      def development? = env == "development"
 
-      def test?
-        env == "test"
-      end
+      def test? = env == "test"
 
-      def staging?
-        env == "staging"
-      end
+      def staging? = env == "staging"
 
-      def production?
-        env == "production"
-      end
+      def production? = env == "production"
 
       # Is this a "safe" environment where destructive operations are okay?
       # Development and test are considered safe; staging and production are not.
-      def safe_env?
-        %w[development test].include?(env)
-      end
+      def safe_env? = %w[development test].include?(env)
 
       # --- Call tree tracking ---
 
       # Get the full call tree as an array of task names
       # Combines inherited tree from parent process (via env) with current process stack
-      def call_tree
-        inherited_tree + current_call_stack
-      end
+      def call_tree = inherited_tree + current_call_stack
 
       # Get just the current process's call stack
-      def current_call_stack
-        @call_stack_mutex.synchronize { @call_stack.dup }
-      end
+      def current_call_stack = @call_stack_mutex.synchronize { @call_stack.dup }
 
       # Get the call tree inherited from parent process via environment
       def inherited_tree
-        tree_str = ENV[ENV_CALL_TREE]
+        tree_str = ENV.fetch(ENV_CALL_TREE, nil)
         return [] if tree_str.nil? || tree_str.empty?
 
         tree_str.split(":")
       end
 
       # Is this task being invoked from another task?
-      def invoked_from_task?
-        !call_tree.empty?
-      end
+      def invoked_from_task? = !call_tree.empty?
 
       # Get the name of the task that invoked this one (immediate parent)
       def invoking_task
@@ -271,14 +233,10 @@ module Devex
       end
 
       # Push a task onto the call stack (called when a task starts)
-      def push_task(task_name)
-        @call_stack_mutex.synchronize { @call_stack.push(task_name) }
-      end
+      def push_task(task_name) = @call_stack_mutex.synchronize { @call_stack.push(task_name) }
 
       # Pop a task from the call stack (called when a task completes)
-      def pop_task
-        @call_stack_mutex.synchronize { @call_stack.pop }
-      end
+      def pop_task = @call_stack_mutex.synchronize { @call_stack.pop }
 
       # Execute a block with a task on the call stack
       def with_task(task_name)
@@ -289,25 +247,23 @@ module Devex
       end
 
       # Reset the call stack (useful for testing)
-      def reset_call_stack!
-        @call_stack_mutex.synchronize { @call_stack.clear }
-      end
+      def reset_call_stack! = @call_stack_mutex.synchronize { @call_stack.clear }
 
       # Summary of current context for debugging/logging
       def summary
         {
-          terminal: terminal?,
-          stdin_tty: stdin_tty?,
-          stdout_tty: stdout_tty?,
-          stderr_tty: stderr_tty?,
-          streams_merged: streams_merged?,
-          ci: ci?,
-          piped: piped?,
-          agent_mode: agent_mode?,
-          interactive: interactive?,
-          color: color?,
-          env: env,
-          call_tree: call_tree,
+          terminal:          terminal?,
+          stdin_tty:         stdin_tty?,
+          stdout_tty:        stdout_tty?,
+          stderr_tty:        stderr_tty?,
+          streams_merged:    streams_merged?,
+          ci:                ci?,
+          piped:             piped?,
+          agent_mode:        agent_mode?,
+          interactive:       interactive?,
+          color:             color?,
+          env:               env,
+          call_tree:         call_tree,
           invoked_from_task: invoked_from_task?
         }
       end
@@ -317,11 +273,11 @@ module Devex
       def to_env
         tree = call_tree
         {
-          "DX_AGENT_MODE" => agent_mode? ? "1" : "0",
+          "DX_AGENT_MODE"  => agent_mode? ? "1" : "0",
           "DX_INTERACTIVE" => interactive? ? "1" : "0",
-          "DX_CI" => ci? ? "1" : "0",
-          "DX_ENV" => env,
-          ENV_CALL_TREE => tree.any? ? tree.join(":") : nil
+          "DX_CI"          => ci? ? "1" : "0",
+          "DX_ENV"         => env,
+          ENV_CALL_TREE    => tree.any? ? tree.join(":") : nil
         }.compact
       end
 
@@ -329,24 +285,16 @@ module Devex
 
       # Set an override value
       # Valid keys: :agent_mode, :interactive, :color, :ci, :terminal, :env
-      def set_override(key, value)
-        @overrides_mutex.synchronize { @overrides[key] = value }
-      end
+      def set_override(key, value) = @overrides_mutex.synchronize { @overrides[key] = value }
 
       # Clear a specific override
-      def clear_override(key)
-        @overrides_mutex.synchronize { @overrides.delete(key) }
-      end
+      def clear_override(key) = @overrides_mutex.synchronize { @overrides.delete(key) }
 
       # Clear all overrides
-      def clear_all_overrides!
-        @overrides_mutex.synchronize { @overrides.clear }
-      end
+      def clear_all_overrides! = @overrides_mutex.synchronize { @overrides.clear }
 
       # Get current overrides (for debugging)
-      def overrides
-        @overrides_mutex.synchronize { @overrides.dup }
-      end
+      def overrides = @overrides_mutex.synchronize { @overrides.dup }
 
       # Execute a block with temporary overrides
       # Example: Context.with_overrides(agent_mode: true, color: false) { ... }
@@ -372,7 +320,7 @@ module Devex
       end
 
       def truthy_env?(var)
-        val = ENV[var]
+        val = ENV.fetch(var, nil)
         val && !val.empty? && val != "0" && val.downcase != "false"
       end
 
@@ -382,7 +330,7 @@ module Devex
         return override if override
 
         ENV_ENVIRONMENT.each do |var|
-          val = ENV[var]
+          val = ENV.fetch(var, nil)
           next if val.nil? || val.empty?
 
           # Normalize the value

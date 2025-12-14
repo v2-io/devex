@@ -5,100 +5,78 @@ require "test_helper"
 class ContextTest < Minitest::Test
   include EnvHelper
 
-  def setup
-    clear_dx_env
-  end
+  def setup = clear_dx_env
 
   # --- Environment variable detection ---
 
   def test_agent_mode_env_with_dx_agent_mode
     with_env("DX_AGENT_MODE" => "1") do
-      assert Devex::Context.agent_mode_env?
-      assert Devex::Context.agent_mode?
+      assert_predicate Devex::Context, :agent_mode_env?
+      assert_predicate Devex::Context, :agent_mode?
     end
   end
 
   def test_agent_mode_env_with_devex_agent_mode
     with_env("DEVEX_AGENT_MODE" => "true") do
-      assert Devex::Context.agent_mode_env?
-      assert Devex::Context.agent_mode?
+      assert_predicate Devex::Context, :agent_mode_env?
+      assert_predicate Devex::Context, :agent_mode?
     end
   end
 
-  def test_agent_mode_env_false_when_not_set
-    refute Devex::Context.agent_mode_env?
-  end
+  def test_agent_mode_env_false_when_not_set = refute_predicate Devex::Context, :agent_mode_env?
 
   def test_agent_mode_env_ignores_falsy_values
     with_env("DX_AGENT_MODE" => "0") do
-      refute Devex::Context.agent_mode_env?
+      refute_predicate Devex::Context, :agent_mode_env?
     end
 
     with_env("DX_AGENT_MODE" => "false") do
-      refute Devex::Context.agent_mode_env?
+      refute_predicate Devex::Context, :agent_mode_env?
     end
 
     with_env("DX_AGENT_MODE" => "") do
-      refute Devex::Context.agent_mode_env?
+      refute_predicate Devex::Context, :agent_mode_env?
     end
   end
 
   def test_batch_mode_env
     with_env("DX_BATCH" => "1") do
-      assert Devex::Context.batch_mode_env?
+      assert_predicate Devex::Context, :batch_mode_env?
     end
 
     with_env("DEVEX_BATCH" => "yes") do
-      assert Devex::Context.batch_mode_env?
+      assert_predicate Devex::Context, :batch_mode_env?
     end
 
-    refute Devex::Context.batch_mode_env?
+    refute_predicate Devex::Context, :batch_mode_env?
   end
 
   def test_interactive_forced
     with_env("DX_INTERACTIVE" => "1") do
-      assert Devex::Context.interactive_forced?
+      assert_predicate Devex::Context, :interactive_forced?
     end
 
-    refute Devex::Context.interactive_forced?
+    refute_predicate Devex::Context, :interactive_forced?
   end
 
   # --- CI detection ---
 
-  def test_ci_detection_with_ci_var
-    with_env("CI" => "true") do
-      assert Devex::Context.ci?
-    end
-  end
+  def test_ci_detection_with_ci_var = with_env("CI" => "true") { assert_predicate Devex::Context, :ci? }
 
-  def test_ci_detection_with_github_actions
-    with_env("GITHUB_ACTIONS" => "true") do
-      assert Devex::Context.ci?
-    end
-  end
+  def test_ci_detection_with_github_actions = with_env("GITHUB_ACTIONS" => "true") { assert_predicate Devex::Context, :ci? }
 
-  def test_ci_detection_with_gitlab_ci
-    with_env("GITLAB_CI" => "true") do
-      assert Devex::Context.ci?
-    end
-  end
+  def test_ci_detection_with_gitlab_ci = with_env("GITLAB_CI" => "true") { assert_predicate Devex::Context, :ci? }
 
-  def test_ci_detection_false_when_empty
-    with_env("CI" => "") do
-      refute Devex::Context.ci?
-    end
-  end
+  def test_ci_detection_false_when_empty = with_env("CI" => "") { refute_predicate Devex::Context, :ci? }
 
-  def test_ci_detection_false_when_not_set
-    refute Devex::Context.ci?
-  end
+  def test_ci_detection_false_when_not_set = refute_predicate Devex::Context, :ci?
 
   # --- Color detection ---
 
   def test_no_color_with_no_color_env
     with_env("NO_COLOR" => "1") do
-      assert Devex::Context.no_color?
-      refute Devex::Context.color?
+      assert_predicate Devex::Context, :no_color?
+      refute_predicate Devex::Context, :color?
     end
   end
 
@@ -106,16 +84,16 @@ class ContextTest < Minitest::Test
     # In agent mode, color would normally be off
     # But FORCE_COLOR should override
     with_env("DX_AGENT_MODE" => "1", "FORCE_COLOR" => "1") do
-      assert Devex::Context.agent_mode?
-      assert Devex::Context.force_color?
-      assert Devex::Context.color?
+      assert_predicate Devex::Context, :agent_mode?
+      assert_predicate Devex::Context, :force_color?
+      assert_predicate Devex::Context, :color?
     end
   end
 
   def test_no_color_takes_precedence_over_force_color
     # NO_COLOR is checked first
     with_env("NO_COLOR" => "1", "FORCE_COLOR" => "1") do
-      refute Devex::Context.color?
+      refute_predicate Devex::Context, :color?
     end
   end
 
@@ -126,58 +104,46 @@ class ContextTest < Minitest::Test
 
   def test_stdout_tty_returns_boolean
     result = Devex::Context.stdout_tty?
-    assert [true, false].include?(result), "stdout_tty? should return boolean"
+    assert_includes [true, false], result, "stdout_tty? should return boolean"
   end
 
   def test_stderr_tty_returns_boolean
     result = Devex::Context.stderr_tty?
-    assert [true, false].include?(result), "stderr_tty? should return boolean"
+    assert_includes [true, false], result, "stderr_tty? should return boolean"
   end
 
   def test_stdin_tty_returns_boolean
     result = Devex::Context.stdin_tty?
-    assert [true, false].include?(result), "stdin_tty? should return boolean"
+    assert_includes [true, false], result, "stdin_tty? should return boolean"
   end
 
   def test_terminal_returns_boolean
     result = Devex::Context.terminal?
-    assert [true, false].include?(result), "terminal? should return boolean"
+    assert_includes [true, false], result, "terminal? should return boolean"
   end
 
   def test_streams_merged_returns_boolean
     result = Devex::Context.streams_merged?
-    assert [true, false].include?(result), "streams_merged? should return boolean"
+    assert_includes [true, false], result, "streams_merged? should return boolean"
   end
 
   def test_piped_returns_boolean
     result = Devex::Context.piped?
-    assert [true, false].include?(result), "piped? should return boolean"
+    assert_includes [true, false], result, "piped? should return boolean"
   end
 
   # --- Composite detection ---
 
-  def test_interactive_false_when_agent_mode_env
-    with_env("DX_AGENT_MODE" => "1") do
-      refute Devex::Context.interactive?
-    end
-  end
+  def test_interactive_false_when_agent_mode_env = with_env("DX_AGENT_MODE" => "1") { refute_predicate Devex::Context, :interactive? }
 
-  def test_interactive_false_when_batch_mode_env
-    with_env("DX_BATCH" => "1") do
-      refute Devex::Context.interactive?
-    end
-  end
+  def test_interactive_false_when_batch_mode_env = with_env("DX_BATCH" => "1") { refute_predicate Devex::Context, :interactive? }
 
-  def test_interactive_false_when_ci
-    with_env("CI" => "true") do
-      refute Devex::Context.interactive?
-    end
-  end
+  def test_interactive_false_when_ci = with_env("CI" => "true") { refute_predicate Devex::Context, :interactive? }
 
   def test_interactive_true_when_forced
     # Even in CI, interactive_forced should enable interactive
     with_env("CI" => "true", "DX_INTERACTIVE" => "1") do
-      assert Devex::Context.interactive?
+      assert_predicate Devex::Context, :interactive?
     end
   end
 
@@ -187,9 +153,8 @@ class ContextTest < Minitest::Test
     summary = Devex::Context.summary
     assert_kind_of Hash, summary
 
-    expected_keys = %i[
-      terminal stdin_tty stdout_tty stderr_tty
-      streams_merged ci piped agent_mode interactive color
+    expected_keys = [
+      :terminal, :stdin_tty, :stdout_tty, :stderr_tty, :streams_merged, :ci, :piped, :agent_mode, :interactive, :color
     ]
     expected_keys.each do |key|
       assert summary.key?(key), "summary should include #{key}"
@@ -202,7 +167,7 @@ class ContextTest < Minitest::Test
 
     %w[DX_AGENT_MODE DX_INTERACTIVE DX_CI].each do |key|
       assert env.key?(key), "to_env should include #{key}"
-      assert %w[0 1].include?(env[key]), "#{key} should be '0' or '1'"
+      assert_includes %w[0 1], env[key], "#{key} should be '0' or '1'"
     end
   end
 
@@ -218,7 +183,7 @@ class ContextTest < Minitest::Test
   def test_env_defaults_to_development
     Devex::Context.reset_env!
     assert_equal "development", Devex::Context.env
-    assert Devex::Context.development?
+    assert_predicate Devex::Context, :development?
   end
 
   def test_env_from_dx_env
@@ -226,8 +191,8 @@ class ContextTest < Minitest::Test
     with_env("DX_ENV" => "production") do
       Devex::Context.reset_env!
       assert_equal "production", Devex::Context.env
-      assert Devex::Context.production?
-      refute Devex::Context.development?
+      assert_predicate Devex::Context, :production?
+      refute_predicate Devex::Context, :development?
     end
   end
 
@@ -254,7 +219,7 @@ class ContextTest < Minitest::Test
     with_env("RAILS_ENV" => "test") do
       Devex::Context.reset_env!
       assert_equal "test", Devex::Context.env
-      assert Devex::Context.test?
+      assert_predicate Devex::Context, :test?
     end
   end
 
@@ -270,22 +235,22 @@ class ContextTest < Minitest::Test
     Devex::Context.reset_env!
     with_env("DX_ENV" => "development") do
       Devex::Context.reset_env!
-      assert Devex::Context.safe_env?
+      assert_predicate Devex::Context, :safe_env?
     end
 
     with_env("DX_ENV" => "test") do
       Devex::Context.reset_env!
-      assert Devex::Context.safe_env?
+      assert_predicate Devex::Context, :safe_env?
     end
 
     with_env("DX_ENV" => "production") do
       Devex::Context.reset_env!
-      refute Devex::Context.safe_env?
+      refute_predicate Devex::Context, :safe_env?
     end
 
     with_env("DX_ENV" => "staging") do
       Devex::Context.reset_env!
-      refute Devex::Context.safe_env?
+      refute_predicate Devex::Context, :safe_env?
     end
   end
 
@@ -294,7 +259,7 @@ class ContextTest < Minitest::Test
   def test_call_tree_empty_by_default
     Devex::Context.reset_call_stack!
     assert_empty Devex::Context.call_tree
-    refute Devex::Context.invoked_from_task?
+    refute_predicate Devex::Context, :invoked_from_task?
   end
 
   def test_push_and_pop_task
@@ -302,12 +267,12 @@ class ContextTest < Minitest::Test
 
     Devex::Context.push_task("test")
     assert_equal ["test"], Devex::Context.call_tree
-    assert Devex::Context.invoked_from_task?
+    assert_predicate Devex::Context, :invoked_from_task?
     assert_equal "test", Devex::Context.invoking_task
     assert_equal "test", Devex::Context.root_task
 
     Devex::Context.push_task("lint")
-    assert_equal ["test", "lint"], Devex::Context.call_tree
+    assert_equal %w[test lint], Devex::Context.call_tree
     assert_equal "lint", Devex::Context.invoking_task
     assert_equal "test", Devex::Context.root_task
 
@@ -345,8 +310,8 @@ class ContextTest < Minitest::Test
   def test_inherited_tree_from_env
     Devex::Context.reset_call_stack!
     with_env("DX_CALL_TREE" => "pre-commit:test") do
-      assert_equal ["pre-commit", "test"], Devex::Context.inherited_tree
-      assert_equal ["pre-commit", "test"], Devex::Context.call_tree
+      assert_equal %w[pre-commit test], Devex::Context.inherited_tree
+      assert_equal %w[pre-commit test], Devex::Context.call_tree
       assert_equal "pre-commit", Devex::Context.root_task
       assert_equal "test", Devex::Context.invoking_task
     end
@@ -356,7 +321,7 @@ class ContextTest < Minitest::Test
     Devex::Context.reset_call_stack!
     with_env("DX_CALL_TREE" => "pre-commit") do
       Devex::Context.push_task("lint")
-      assert_equal ["pre-commit", "lint"], Devex::Context.call_tree
+      assert_equal %w[pre-commit lint], Devex::Context.call_tree
       Devex::Context.pop_task
     end
   end

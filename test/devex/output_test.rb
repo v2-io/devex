@@ -100,9 +100,9 @@ class OutputTest < Minitest::Test
 
   def test_render_template_basic
     template = "Hello, <%= name %>!"
-    result = Devex::Output.render_template(template, binding)
+    result   = Devex::Output.render_template(template, binding)
     # Need a local variable for the template
-    name = "World"
+    name   = "World"
     result = Devex::Output.render_template(template, binding)
     assert_equal "Hello, World!", result
   end
@@ -117,9 +117,9 @@ class OutputTest < Minitest::Test
       <% end -%>
     ERB
 
-    status = "complete"
+    status  = "complete"
     success = true
-    result = Devex::Output.render_template(template, binding)
+    result  = Devex::Output.render_template(template, binding)
     assert_includes result, "Status: complete"
     assert_includes result, "All good!"
     refute_includes result, "Something went wrong"
@@ -131,14 +131,11 @@ class OutputTest < Minitest::Test
     klass = Class.new do
       include Devex::Output
 
-      def test_output(io)
-        # Capture to custom IO - need to use class methods directly
-        Devex::Output.success("Included!", io: io)
-      end
+      def test_output(io) = Devex::Output.success("Included!", io: io)
     end
 
     obj = klass.new
-    io = StringIO.new
+    io  = StringIO.new
 
     with_env("DX_AGENT_MODE" => "1") do
       obj.test_output(io)

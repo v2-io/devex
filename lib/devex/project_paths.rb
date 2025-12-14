@@ -58,39 +58,32 @@ module Devex
       vendor:         "vendor",
       db:             "db",
       config_dir:     "config",
-      scripts:        "scripts",
+      scripts:        "scripts"
     }.freeze
 
     def initialize(root: nil, overrides: {})
-      @root = root ? Path[root] : Dirs.project_dir
+      @root      = root ? Path[root] : Dirs.project_dir
       @overrides = overrides.transform_keys(&:to_sym)
-      @cache = {}
+      @cache     = {}
     end
 
     # Project root directory
-    def root
-      @root
-    end
+    attr_reader :root
 
     # Glob from project root
-    def [](pattern, **opts)
-      @root[pattern, **opts]
-    end
+    def [](pattern, **) = @root[pattern, **]
 
     # Is this project in organized mode? (.dx/ directory exists)
-    def organized_mode?
-      @organized ||= (@root / ".dx").directory?
-    end
+    def organized_mode? = @organized ||= (@root / ".dx").directory?
 
     # Dynamic path resolution
-    def method_missing(name, *args, &block)
+    def method_missing(name, *args, &)
       return super unless CONVENTIONS.key?(name) || @overrides.key?(name)
+
       @cache[name] ||= resolve(name)
     end
 
-    def respond_to_missing?(name, include_private = false)
-      CONVENTIONS.key?(name) || @overrides.key?(name) || super
-    end
+    def respond_to_missing?(name, include_private = false) = CONVENTIONS.key?(name) || @overrides.key?(name) || super
 
     private
 
@@ -99,16 +92,15 @@ module Devex
       if @overrides.key?(name)
         path = @root / @overrides[name]
         return path if path.exist?
+
         return fail_missing!(name, [@overrides[name]])
       end
 
       # Special handlers
       convention = CONVENTIONS[name]
       case convention
-      when nil
-        @root  # root returns the root
-      when Symbol
-        send(convention)
+      when nil    then @root  # root returns the root
+      when Symbol then send(convention)
       when Array
         found = convention.map { |p| @root / p }.find(&:exist?)
         found || fail_missing!(name, convention)
@@ -172,7 +164,7 @@ module Devex
       # Check common version file locations
       candidates = [
         @root / "VERSION",
-        @root / "version",
+        @root / "version"
       ]
 
       # Also check lib/*/version.rb patterns
@@ -191,7 +183,7 @@ module Devex
       message = <<~ERR
         ERROR: Project #{name} directory not found
 
-          Looked for: #{tried.join(", ")}
+          Looked for: #{tried.join(', ')}
           Project root: #{@root}
 
           To configure a custom location, add to .dx.yml:
@@ -201,16 +193,22 @@ module Devex
         Exit code: 78 (EX_CONFIG)
       ERR
 
-      if Devex.respond_to?(:fail!)
-        Devex.fail!(message, exit_code: 78)
-      else
-        raise message
-      end
+      raise message unless Devex.respond_to?(:fail!)
+
+      Devex.fail!(message, exit_code: 78)
     end
 
     def fail_config_conflict!(dx_dir, dx_yml)
-      dx_dir_time = dx_dir.mtime rescue Time.now
-      dx_yml_time = dx_yml.mtime rescue Time.now
+      dx_dir_time = begin
+        dx_dir.mtime
+      rescue StandardError
+        Time.now
+      end
+      dx_yml_time = begin
+        dx_yml.mtime
+      rescue StandardError
+        Time.now
+      end
 
       message = <<~ERR
         ERROR: Conflicting dx configuration
@@ -231,11 +229,9 @@ module Devex
         Exit code: 78 (EX_CONFIG)
       ERR
 
-      if Devex.respond_to?(:fail!)
-        Devex.fail!(message, exit_code: 78)
-      else
-        raise message
-      end
+      raise message unless Devex.respond_to?(:fail!)
+
+      Devex.fail!(message, exit_code: 78)
     end
   end
 end

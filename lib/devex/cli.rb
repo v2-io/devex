@@ -4,15 +4,15 @@ module Devex
   # Main CLI class - entry point for dx command
   class CLI
     HELP_FLAGS = %w[-h -? --help].freeze
-    HELP_WORD = "help"
+    HELP_WORD  = "help"
 
     # Universal flags available to all commands
     UNIVERSAL_FLAGS = {
-      format: ["-f", "--format=FORMAT"],
-      verbose: ["-v", "--verbose"],
-      quiet: ["-q", "--quiet"],
+      format:   ["-f", "--format=FORMAT"],
+      verbose:  ["-v", "--verbose"],
+      quiet:    ["-q", "--quiet"],
       no_color: ["--no-color"],
-      color: ["--color=MODE"]
+      color:    ["--color=MODE"]
     }.freeze
 
     # Project operation flag (shown in help)
@@ -23,28 +23,27 @@ module Devex
     # Hidden debug flags for testing/reproduction (not shown in help)
     # These set Context overrides directly
     DEBUG_FLAGS = {
-      dx_force_color: ["--dx-force-color"],
-      dx_no_color: ["--dx-no-color"],
-      dx_agent_mode: ["--dx-agent-mode"],
-      dx_no_agent_mode: ["--dx-no-agent-mode"],
-      dx_interactive: ["--dx-interactive"],
+      dx_force_color:    ["--dx-force-color"],
+      dx_no_color:       ["--dx-no-color"],
+      dx_agent_mode:     ["--dx-agent-mode"],
+      dx_no_agent_mode:  ["--dx-no-agent-mode"],
+      dx_interactive:    ["--dx-interactive"],
       dx_no_interactive: ["--dx-no-interactive"],
-      dx_env: ["--dx-env=ENV"]
+      dx_env:            ["--dx-env=ENV"]
     }.freeze
 
-    attr_reader :root_tool, :executable_name, :project_root
-    attr_reader :global_options
+    attr_reader :root_tool, :executable_name, :project_root, :global_options
 
     def initialize(executable_name: "dx")
       @executable_name = executable_name
-      @root_tool = Tool.new(nil) # root has no name
-      @builtin_root = Tool.new(nil)
-      @mixins = {}
-      @project_root = nil
+      @root_tool       = Tool.new(nil) # root has no name
+      @builtin_root    = Tool.new(nil)
+      @mixins          = {}
+      @project_root    = nil
       @global_options = {
-        format: nil,
+        format:  nil,
         verbose: 0,
-        quiet: false
+        quiet:   false
       }
     end
 
@@ -102,7 +101,7 @@ module Devex
     # Load project-specific tools
     def load_project_tools(project_root)
       @project_root = project_root
-      tools_dir = Devex.tools_dir(project_root)
+      tools_dir     = Devex.tools_dir(project_root)
       Loader.load_directory(tools_dir, @root_tool, @mixins) if tools_dir
     end
 
@@ -124,9 +123,7 @@ module Devex
       help_text = tool.help_text(@executable_name)
 
       # Append global options section if showing root help
-      if tool == @root_tool
-        help_text += global_options_help
-      end
+      help_text += global_options_help if tool == @root_tool
 
       puts help_text
     end
@@ -136,30 +133,30 @@ module Devex
     # Extract global flags from argv, apply Context overrides
     # Returns [remaining_argv, show_dx_version]
     def extract_global_flags(argv)
-      remaining = []
+      remaining       = []
       show_dx_version = false
 
       i = 0
       while i < argv.length
-        arg = argv[i]
+        arg      = argv[i]
         consumed = false
 
         # Check universal flags
         case arg
         when "--dx-version"
           show_dx_version = true
-          consumed = true
+          consumed        = true
         when "-f", "--format"
           # -f FORMAT (two args)
           @global_options[:format] = argv[i + 1]
-          i += 1
+          i        += 1
           consumed = true
         when /^--format=(.+)$/
-          @global_options[:format] = $1
+          @global_options[:format] = ::Regexp.last_match(1)
           consumed = true
         when "-v", "--verbose"
           @global_options[:verbose] += 1
-          consumed = true
+          consumed                  = true
         when "-q", "--quiet"
           @global_options[:quiet] = true
           consumed = true
@@ -202,7 +199,7 @@ module Devex
             Context.set_override(:interactive, false)
             consumed = true
           when /^--dx-env=(.+)$/
-            Context.set_override(:env, $1)
+            Context.set_override(:env, ::Regexp.last_match(1))
             consumed = true
           when "--dx-ci"
             Context.set_override(:ci, true)
@@ -259,7 +256,7 @@ module Devex
     # Resolve a tool from argv
     # Returns [tool, remaining_argv]
     def resolve_tool(argv)
-      tool = @root_tool
+      tool      = @root_tool
       remaining = argv.dup
 
       while remaining.any?

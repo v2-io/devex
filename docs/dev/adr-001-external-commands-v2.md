@@ -37,17 +37,17 @@ This means `run "rspec"` in a dx tool automatically:
 
 ### Quick Reference
 
-| Method | Purpose | stdout | Returns |
-|--------|---------|--------|---------|
-| `run(*cmd)` | Run command, wait | streams | `Result` |
-| `run?(*cmd)` | Test if command succeeds | silent | `bool` |
-| `capture(*cmd)` | Run and capture output | captured | `Result` |
-| `spawn(*cmd)` | Run in background | configurable | `Controller` |
-| `exec!(*cmd)` | Replace this process | N/A | never returns |
-| `shell(str)` | Run via shell | streams | `Result` |
-| `shell?(str)` | Test shell command | silent | `bool` |
-| `ruby(*args)` | Run Ruby subprocess | streams | `Result` |
-| `tool(name, *args)` | Run another dx tool | streams | `Result` |
+| Method              | Purpose                  | stdout       | Returns       |
+| ------------------- | ------------------------ | ------------ | ------------- |
+| `run(*cmd)`         | Run command, wait        | streams      | `Result`      |
+| `run?(*cmd)`        | Test if command succeeds | silent       | `bool`        |
+| `capture(*cmd)`     | Run and capture output   | captured     | `Result`      |
+| `spawn(*cmd)`       | Run in background        | configurable | `Controller`  |
+| `exec!(*cmd)`       | Replace this process     | N/A          | never returns |
+| `shell(str)`        | Run via shell            | streams      | `Result`      |
+| `shell?(str)`       | Test shell command       | silent       | `bool`        |
+| `ruby(*args)`       | Run Ruby subprocess      | streams      | `Result`      |
+| `tool(name, *args)` | Run another dx tool      | streams      | `Result`      |
 
 ### `run` - Run Command
 
@@ -313,12 +313,12 @@ end
 
 ### Stack Components
 
-| Layer | Trigger | What it does |
-|-------|---------|--------------|
-| **dotenv** | `.env` exists | Loads environment variables |
-| **mise** | `.mise.toml` or `.tool-versions` | Activates correct language versions |
-| **bundle** | `Gemfile` + command is gem | Runs through `bundle exec` |
-| **clean_ruby** | Always (for Ruby projects) | Clears `RUBYOPT`, `BUNDLE_*` from devex's context |
+| Layer          | Trigger                          | What it does                                      |
+| -------------- | -------------------------------- | ------------------------------------------------- |
+| **dotenv**     | `.env` exists                    | Loads environment variables                       |
+| **mise**       | `.mise.toml` or `.tool-versions` | Activates correct language versions               |
+| **bundle**     | `Gemfile` + command is gem       | Runs through `bundle exec`                        |
+| **clean_ruby** | Always (for Ruby projects)       | Clears `RUBYOPT`, `BUNDLE_*` from devex's context |
 
 ### Configuration
 

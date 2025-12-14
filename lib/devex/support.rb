@@ -58,9 +58,7 @@ module Devex
 
     class << self
       # Version of the support library
-      def version
-        "0.1.0"
-      end
+      def version = "0.1.0"
     end
   end
 end

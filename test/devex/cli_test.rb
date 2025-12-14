@@ -23,43 +23,43 @@ class CLITest < Minitest::Test
   # --- Global options extraction ---
 
   def test_extract_format_flag_long
-    argv, _ = @cli.send(:extract_global_flags, ["--format=json", "version"])
+    argv, = @cli.send(:extract_global_flags, ["--format=json", "version"])
     assert_equal "json", @cli.global_options[:format]
     assert_equal ["version"], argv
   end
 
   def test_extract_format_flag_short
-    argv, _ = @cli.send(:extract_global_flags, ["-f", "yaml", "version"])
+    argv, = @cli.send(:extract_global_flags, ["-f", "yaml", "version"])
     assert_equal "yaml", @cli.global_options[:format]
     assert_equal ["version"], argv
   end
 
   def test_extract_verbose_flag
-    argv, _ = @cli.send(:extract_global_flags, ["-v", "version"])
+    argv, = @cli.send(:extract_global_flags, ["-v", "version"])
     assert_equal 1, @cli.global_options[:verbose]
     assert_equal ["version"], argv
   end
 
   def test_extract_verbose_stacks
-    argv, _ = @cli.send(:extract_global_flags, ["-v", "-v", "-v", "version"])
+    argv, = @cli.send(:extract_global_flags, ["-v", "-v", "-v", "version"])
     assert_equal 3, @cli.global_options[:verbose]
     assert_equal ["version"], argv
   end
 
   def test_extract_quiet_flag
-    argv, _ = @cli.send(:extract_global_flags, ["-q", "version"])
+    argv, = @cli.send(:extract_global_flags, ["-q", "version"])
     assert @cli.global_options[:quiet]
     assert_equal ["version"], argv
   end
 
   def test_extract_no_color_sets_context_override
     @cli.send(:extract_global_flags, ["--no-color", "version"])
-    refute Devex::Context.color?
+    refute_predicate Devex::Context, :color?
   end
 
   def test_extract_color_always_sets_context_override
     @cli.send(:extract_global_flags, ["--color=always", "version"])
-    assert Devex::Context.color?
+    assert_predicate Devex::Context, :color?
   end
 
   def test_extract_dx_version_returns_flag
@@ -71,17 +71,17 @@ class CLITest < Minitest::Test
 
   def test_dx_agent_mode_sets_context
     @cli.send(:extract_global_flags, ["--dx-agent-mode", "version"])
-    assert Devex::Context.agent_mode?
+    assert_predicate Devex::Context, :agent_mode?
   end
 
   def test_dx_no_agent_mode_sets_context
     @cli.send(:extract_global_flags, ["--dx-no-agent-mode", "version"])
-    refute Devex::Context.agent_mode?
+    refute_predicate Devex::Context, :agent_mode?
   end
 
   def test_dx_interactive_sets_context
     @cli.send(:extract_global_flags, ["--dx-interactive", "version"])
-    assert Devex::Context.interactive?
+    assert_predicate Devex::Context, :interactive?
   end
 
   def test_dx_env_sets_context
@@ -92,18 +92,18 @@ class CLITest < Minitest::Test
 
   def test_dx_terminal_sets_context
     @cli.send(:extract_global_flags, ["--dx-terminal", "version"])
-    assert Devex::Context.terminal?
+    assert_predicate Devex::Context, :terminal?
   end
 
   def test_dx_ci_sets_context
     @cli.send(:extract_global_flags, ["--dx-ci", "version"])
-    assert Devex::Context.ci?
+    assert_predicate Devex::Context, :ci?
   end
 
   # --- Help extraction ---
 
   def test_extract_help_word
-    argv, show_help = @cli.send(:extract_help, ["help", "version"])
+    argv, show_help = @cli.send(:extract_help, %w[help version])
     assert show_help
     assert_equal ["version"], argv
   end
@@ -135,7 +135,7 @@ class CLITest < Minitest::Test
   end
 
   def test_resolve_tool_finds_nested
-    tool, remaining = @cli.send(:resolve_tool, ["version", "bump", "patch"])
+    tool, remaining = @cli.send(:resolve_tool, %w[version bump patch])
     assert_equal "bump", tool.name
     assert_equal ["patch"], remaining
   end

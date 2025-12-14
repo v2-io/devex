@@ -52,17 +52,11 @@ module Devex
 
         def add_ansi_string_methods!
           String.class_eval do
-            def ansi(*styles, bg: nil)
-              Devex::Support::ANSI[self, *styles, bg: bg]
-            end
+            def ansi(*styles, bg: nil) = Devex::Support::ANSI[self, *styles, bg: bg]
 
-            def strip_ansi
-              Devex::Support::ANSI.strip(self)
-            end
+            def strip_ansi = Devex::Support::ANSI.strip(self)
 
-            def visible_length
-              Devex::Support::ANSI.visible_length(self)
-            end
+            def visible_length = Devex::Support::ANSI.visible_length(self)
           end
         end
       end

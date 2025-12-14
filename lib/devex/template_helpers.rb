@@ -16,12 +16,12 @@ module Devex
   module TemplateHelpers
     # Color definitions (truecolor RGB) - matches Output::COLORS
     COLORS = {
-      success: [0x5A, 0xF7, 0x8E],
-      error: [0xFF, 0x6B, 0x6B],
-      warning: [0xFF, 0xE6, 0x6D],
-      info: [0x6B, 0xC5, 0xFF],
-      header: [0xC4, 0xB5, 0xFD],
-      muted: [0x88, 0x88, 0x88],
+      success:  [0x5A, 0xF7, 0x8E],
+      error:    [0xFF, 0x6B, 0x6B],
+      warning:  [0xFF, 0xE6, 0x6D],
+      info:     [0x6B, 0xC5, 0xFF],
+      header:   [0xC4, 0xB5, 0xFD],
+      muted:    [0x88, 0x88, 0x88],
       emphasis: [0xFF, 0xFF, 0xFF]
     }.freeze
 
@@ -29,14 +29,14 @@ module Devex
     # (Not nerdfont glyphs or emoji that render as images)
     SYMBOLS = {
       success: "✓",
-      error: "✗",
+      error:   "✗",
       warning: "⚠",
-      info: "ℹ",
-      arrow: "→",
-      bullet: "•",
-      check: "✓",
-      cross: "✗",
-      dot: "·"
+      info:    "ℹ",
+      arrow:   "→",
+      bullet:  "•",
+      check:   "✓",
+      cross:   "✗",
+      dot:     "·"
     }.freeze
 
     module_function
@@ -68,14 +68,12 @@ module Devex
     end
 
     # Get symbol - always unicode (basic unicode works everywhere)
-    def sym(name)
-      SYMBOLS.fetch(name, name.to_s)
-    end
+    def sym(name) = SYMBOLS.fetch(name, name.to_s)
 
     # Colored symbol - combines sym() and c()
     def csym(name, color = nil)
       color ||= name # Default: use symbol name as color name
-      s = sym(name)
+      s     = sym(name)
       c(color, s)
     end
 
@@ -88,7 +86,7 @@ module Devex
     # Styled heading
     def heading(text, char: "=", width: nil)
       width ||= text.length
-      line = char * width
+      line  = char * width
       if Context.color?
         "#{c(:header, text)}\n#{c(:muted, line)}"
       else
@@ -97,19 +95,13 @@ module Devex
     end
 
     # Muted/secondary text
-    def muted(text)
-      c(:muted, text)
-    end
+    def muted(text) = c(:muted, text)
 
     # Bold text
-    def bold(text)
-      c(:bold, text)
-    end
+    def bold(text) = c(:bold, text)
 
     # Create a binding with all helpers and locals available
-    def template_binding(locals = {})
-      TemplateContext.new(locals).get_binding
-    end
+    def template_binding(locals = {}) = TemplateContext.new(locals).get_binding
   end
 
   # Context object for template rendering
@@ -128,12 +120,10 @@ module Devex
       end
     end
 
-    def get_binding
-      binding
-    end
+    def get_binding = binding
 
     # Allow accessing locals as methods or via method_missing
-    def method_missing(name, *args, &block)
+    def method_missing(name, *args, &)
       if @locals.key?(name)
         @locals[name]
       else
@@ -141,8 +131,6 @@ module Devex
       end
     end
 
-    def respond_to_missing?(name, include_private = false)
-      @locals.key?(name) || super
-    end
+    def respond_to_missing?(name, include_private = false) = @locals.key?(name) || super
   end
 end

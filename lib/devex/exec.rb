@@ -74,9 +74,7 @@ module Devex
     # @example Chain with early exit
     #   run("lint").then { run("test") }.exit_on_failure!
     #
-    def run(*cmd, **opts)
-      execute_command(cmd, **opts)
-    end
+    def run(*cmd, **) = execute_command(cmd, **)
 
     # Test if a command succeeds (exit code 0).
     #
@@ -90,9 +88,7 @@ module Devex
     #     run "rubocop"
     #   end
     #
-    def run?(*cmd, **opts)
-      execute_command(cmd, **opts, out: :null, err: :null).success?
-    end
+    def run?(*cmd, **) = execute_command(cmd, **, out: :null, err: :null).success?
 
     # Run a command and capture its output.
     #
@@ -106,9 +102,7 @@ module Devex
     #   result = capture "git", "rev-parse", "HEAD"
     #   commit = result.stdout.strip
     #
-    def capture(*cmd, **opts)
-      execute_command(cmd, **opts, out: :capture, err: :capture)
-    end
+    def capture(*cmd, **) = execute_command(cmd, **, out: :capture, err: :capture)
 
     # Start a command in the background without waiting.
     #
@@ -128,8 +122,8 @@ module Devex
     #   server.kill(:TERM)
     #   server.result
     #
-    def spawn(*cmd, name: nil, stdin: :null, stdout: :null, stderr: :null, **opts)
-      spawn_command(cmd, name: name, stdin: stdin, stdout: stdout, stderr: stderr, **opts)
+    def spawn(*cmd, name: nil, stdin: :null, stdout: :null, stderr: :null, **)
+      spawn_command(cmd, name: name, stdin: stdin, stdout: stdout, stderr: stderr, **)
     end
 
     # Replace the current process with a command.
@@ -144,8 +138,8 @@ module Devex
     #   exec! "vim", filename
     #   # This line never executes
     #
-    def exec!(*cmd, **opts)
-      prepared = prepare_command(cmd, **opts)
+    def exec!(*cmd, **)
+      prepared = prepare_command(cmd, **)
       Kernel.exec(prepared[:env], *prepared[:command], **prepared[:spawn_opts])
     end
 
@@ -167,9 +161,7 @@ module Devex
     #
     # @note Security: Never interpolate untrusted input
     #
-    def shell(command_string, **opts)
-      execute_command(["/bin/sh", "-c", command_string], **opts, shell: true)
-    end
+    def shell(command_string, **) = execute_command(["/bin/sh", "-c", command_string], **, shell: true)
 
     # Test if a shell command succeeds.
     #
@@ -181,9 +173,7 @@ module Devex
     #     shell "docker compose up -d"
     #   end
     #
-    def shell?(command_string, **opts)
-      shell(command_string, **opts, out: :null, err: :null).success?
-    end
+    def shell?(command_string, **) = shell(command_string, **, out: :null, err: :null).success?
 
     # ─────────────────────────────────────────────────────────────
     # Specialized Commands
@@ -201,9 +191,7 @@ module Devex
     #   ruby "-e", "puts RUBY_VERSION"
     #   ruby "script.rb", "--verbose"
     #
-    def ruby(*args, **opts)
-      execute_command(["ruby", *args], **opts, clean_env: true)
-    end
+    def ruby(*args, **) = execute_command(["ruby", *args], **, clean_env: true)
 
     # Run another dx tool programmatically.
     #
@@ -221,13 +209,13 @@ module Devex
     #
     def tool(tool_name, *args, capture: false, **opts)
       # Propagate call tree
-      call_tree = ENV.fetch("DX_CALL_TREE", "")
+      call_tree    = ENV.fetch("DX_CALL_TREE", "")
       current_tool = ENV.fetch("DX_CURRENT_TOOL", "")
-      new_tree = call_tree.empty? ? current_tool : "#{call_tree}:#{current_tool}"
+      new_tree     = call_tree.empty? ? current_tool : "#{call_tree}:#{current_tool}"
 
       env = opts[:env] || {}
       env = env.merge(
-        "DX_CALL_TREE" => new_tree,
+        "DX_CALL_TREE"         => new_tree,
         "DX_INVOKED_FROM_TOOL" => "1"
       )
 
@@ -245,9 +233,7 @@ module Devex
     # @param args [Array<String>] Arguments for the tool
     # @return [Boolean] true if exit code is 0
     #
-    def tool?(tool_name, *args, **opts)
-      tool(tool_name, *args, **opts, capture: true).success?
-    end
+    def tool?(tool_name, *, **) = tool(tool_name, *, **, capture: true).success?
 
     private
 
@@ -256,7 +242,7 @@ module Devex
     # ─────────────────────────────────────────────────────────────
 
     def execute_command(cmd, **opts)
-      prepared = prepare_command(cmd, **opts)
+      prepared   = prepare_command(cmd, **opts)
       start_time = Time.now
 
       begin
@@ -265,18 +251,18 @@ module Devex
 
         Result.from_status(
           status,
-          command: prepared[:original_command],
+          command:  prepared[:original_command],
           duration: duration,
-          stdout: stdout_data,
-          stderr: stderr_data,
-          options: opts
+          stdout:   stdout_data,
+          stderr:   stderr_data,
+          options:  opts
         )
       rescue Errno::ENOENT, Errno::EACCES => e
         Result.from_exception(
           e,
-          command: prepared[:original_command],
+          command:  prepared[:original_command],
           duration: Time.now - start_time,
-          options: opts
+          options:  opts
         )
       end
     end
@@ -284,8 +270,10 @@ module Devex
     def spawn_command(cmd, name:, stdin:, stdout:, stderr:, **opts)
       prepared = prepare_command(cmd, **opts)
 
-      spawn_opts = prepared[:spawn_opts].dup
-      stdin_pipe, stdout_pipe, stderr_pipe = nil, nil, nil
+      spawn_opts  = prepared[:spawn_opts].dup
+      stdin_pipe  = nil
+      stdout_pipe = nil
+      stderr_pipe = nil
 
       # Configure stdin
       case stdin
@@ -328,21 +316,21 @@ module Devex
       stderr_write&.close
 
       Controller.new(
-        pid: pid,
+        pid:     pid,
         command: prepared[:original_command],
-        name: name,
-        stdin: stdin_pipe,
-        stdout: stdout_pipe,
-        stderr: stderr_pipe,
+        name:    name,
+        stdin:   stdin_pipe,
+        stdout:  stdout_pipe,
+        stderr:  stderr_pipe,
         options: opts
       )
     end
 
     def run_with_streams(prepared)
-      opts = prepared[:spawn_opts]
+      opts     = prepared[:spawn_opts]
       out_mode = prepared[:out_mode]
       err_mode = prepared[:err_mode]
-      timeout = prepared[:timeout]
+      timeout  = prepared[:timeout]
 
       stdout_data = nil
       stderr_data = nil
@@ -350,7 +338,7 @@ module Devex
       case [out_mode, err_mode]
       when [:inherit, :inherit]
         # Simple case: just run the command
-        pid = Process.spawn(prepared[:env], *prepared[:command], **opts)
+        pid    = Process.spawn(prepared[:env], *prepared[:command], **opts)
         status = wait_with_timeout(pid, timeout, prepared[:original_command])
 
       when [:capture, :capture]
@@ -359,8 +347,8 @@ module Devex
 
       when [:null, :null]
         # Discard both
-        opts = opts.merge(out: "/dev/null", err: "/dev/null")
-        pid = Process.spawn(prepared[:env], *prepared[:command], **opts)
+        opts   = opts.merge(out: "/dev/null", err: "/dev/null")
+        pid    = Process.spawn(prepared[:env], *prepared[:command], **opts)
         status = wait_with_timeout(pid, timeout, prepared[:original_command])
 
       else
@@ -398,10 +386,22 @@ module Devex
 
             remaining = deadline - Time.now
             if remaining <= 0
-              Process.kill(:TERM, wait_thr.pid) rescue nil
+              begin
+                Process.kill(:TERM, wait_thr.pid)
+              rescue StandardError
+                nil
+              end
               sleep 0.1
-              Process.kill(:KILL, wait_thr.pid) rescue nil
-              threads.each { |t| t.kill rescue nil }
+              begin
+                Process.kill(:KILL, wait_thr.pid)
+              rescue StandardError
+                nil
+              end
+              threads.each do |t|
+                t.kill
+              rescue StandardError
+                nil
+              end
               return [stdout_data, stderr_data, build_timeout_status(wait_thr)]
             end
 
@@ -415,7 +415,7 @@ module Devex
       end
     end
 
-    def wait_with_timeout(pid, timeout, command)
+    def wait_with_timeout(pid, timeout, _command)
       return Process.wait2(pid)[1] unless timeout
 
       deadline = Time.now + timeout
@@ -425,9 +425,17 @@ module Devex
 
         remaining = deadline - Time.now
         if remaining <= 0
-          Process.kill(:TERM, pid) rescue nil
+          begin
+            Process.kill(:TERM, pid)
+          rescue StandardError
+            nil
+          end
           sleep 0.1
-          Process.kill(:KILL, pid) rescue nil
+          begin
+            Process.kill(:KILL, pid)
+          rescue StandardError
+            nil
+          end
           _, status = Process.wait2(pid)
           return build_timeout_status_from_status(status)
         end
@@ -443,17 +451,15 @@ module Devex
       TimeoutStatus.new
     end
 
-    def build_timeout_status_from_status(_status)
-      TimeoutStatus.new
-    end
+    def build_timeout_status_from_status(_status) = TimeoutStatus.new
 
     # Minimal status object for timeout cases
     class TimeoutStatus
-      def pid; 0; end
-      def exited?; false; end
+      def pid;        0; end
+      def exited?;    false; end
       def exitstatus; nil; end
-      def signaled?; true; end
-      def termsig; 9; end # SIGKILL
+      def signaled?;  true; end
+      def termsig;    9; end # SIGKILL
     end
 
     # ─────────────────────────────────────────────────────────────
@@ -461,10 +467,10 @@ module Devex
     # ─────────────────────────────────────────────────────────────
 
     def prepare_command(cmd, **opts)
-      cmd = cmd.flatten.map(&:to_s)
+      cmd              = cmd.flatten.map(&:to_s)
       original_command = cmd.dup
 
-      env = (opts[:env] || {}).transform_keys(&:to_s).transform_values(&:to_s)
+      env        = (opts[:env] || {}).transform_keys(&:to_s).transform_values(&:to_s)
       spawn_opts = {}
 
       # Working directory
@@ -475,18 +481,16 @@ module Devex
       end
 
       # Environment stack (unless raw mode)
-      unless opts[:raw]
-        env, cmd = apply_environment_stack(env, cmd, opts)
-      end
+      env, cmd = apply_environment_stack(env, cmd, opts) unless opts[:raw]
 
       {
-        env: env,
-        command: cmd,
+        env:              env,
+        command:          cmd,
         original_command: original_command,
-        spawn_opts: spawn_opts,
-        out_mode: opts.fetch(:out, :inherit),
-        err_mode: opts.fetch(:err, :inherit),
-        timeout: opts[:timeout]
+        spawn_opts:       spawn_opts,
+        out_mode:         opts.fetch(:out, :inherit),
+        err_mode:         opts.fetch(:err, :inherit),
+        timeout:          opts[:timeout]
       }
     end
 
@@ -500,24 +504,16 @@ module Devex
     #
     def apply_environment_stack(env, cmd, opts)
       # Clean devex's bundler pollution (default: true unless clean_env: false)
-      if opts.fetch(:clean_env, true) && defined?(Bundler)
-        env = clean_bundler_env(env)
-      end
+      env = clean_bundler_env(env) if opts.fetch(:clean_env, true) && defined?(Bundler)
 
       # Bundle exec wrapping (if appropriate)
-      unless opts[:shell] || opts[:bundle] == false
-        cmd = maybe_bundle_exec(cmd, opts)
-      end
+      cmd = maybe_bundle_exec(cmd, opts) unless opts[:shell] || opts[:bundle] == false
 
       # Mise exec wrapping (if detected, unless disabled)
-      unless opts[:shell]
-        cmd = maybe_mise_exec(cmd, opts)
-      end
+      cmd = maybe_mise_exec(cmd, opts) unless opts[:shell]
 
       # Dotenv wrapping (explicit opt-in only)
-      if opts[:dotenv] == true
-        cmd = with_dotenv(cmd, opts)
-      end
+      cmd = with_dotenv(cmd, opts) if opts[:dotenv] == true
 
       [env, cmd]
     end
@@ -559,12 +555,11 @@ module Devex
 
     def gemfile_present?
       # Cache this for the process lifetime
-      @gemfile_present ||= begin
-        # Check in working directory or project root
-        File.exist?("Gemfile") ||
-          (defined?(Devex::Dirs) && Devex::Dirs.in_project? &&
-           File.exist?(File.join(Devex::Dirs.project_dir.to_s, "Gemfile")))
-      end
+
+      # Check in working directory or project root
+      @gemfile_present ||= File.exist?("Gemfile") ||
+                           (defined?(Devex::Dirs) && Devex::Dirs.in_project? &&
+                            File.exist?(File.join(Devex::Dirs.project_dir.to_s, "Gemfile")))
     end
 
     # Heuristic: is this likely a Ruby gem executable?
@@ -646,9 +641,6 @@ module Devex
     # @param opts [Hash] Options (unused currently, for future .env path override)
     # @return [Array<String>] Command wrapped with dotenv
     #
-    def with_dotenv(cmd, _opts)
-      # The dotenv CLI loads .env and then executes the remaining args
-      ["dotenv", *cmd]
-    end
+    def with_dotenv(cmd, _opts) = ["dotenv", *cmd]
   end
 end

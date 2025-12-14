@@ -6,54 +6,54 @@ require "devex/exec/result"
 class ResultTest < Minitest::Test
   def test_success_when_exit_code_zero
     result = Devex::Exec::Result.new(command: "ls", exit_code: 0)
-    assert result.success?
-    refute result.failed?
+    assert_predicate result, :success?
+    refute_predicate result, :failed?
   end
 
   def test_failed_when_exit_code_nonzero
     result = Devex::Exec::Result.new(command: "ls", exit_code: 1)
-    refute result.success?
-    assert result.failed?
+    refute_predicate result, :success?
+    assert_predicate result, :failed?
   end
 
   def test_failed_when_exception_present
     result = Devex::Exec::Result.new(
-      command: "nonexistent",
+      command:   "nonexistent",
       exit_code: 0,
       exception: RuntimeError.new("command not found")
     )
-    refute result.success?
-    assert result.failed?
+    refute_predicate result, :success?
+    assert_predicate result, :failed?
   end
 
   def test_signaled_when_signal_code_present
     result = Devex::Exec::Result.new(command: "sleep", signal_code: 9)
-    assert result.signaled?
+    assert_predicate result, :signaled?
   end
 
   def test_not_signaled_when_normal_exit
     result = Devex::Exec::Result.new(command: "ls", exit_code: 0)
-    refute result.signaled?
+    refute_predicate result, :signaled?
   end
 
   def test_timed_out_when_option_set
     result = Devex::Exec::Result.new(
-      command: "sleep",
-      exit_code: nil,
+      command:     "sleep",
+      exit_code:   nil,
       signal_code: 9,
-      options: { timed_out: true }
+      options:     { timed_out: true }
     )
-    assert result.timed_out?
+    assert_predicate result, :timed_out?
   end
 
   def test_running_when_pid_but_no_exit
-    result = Devex::Exec::Result.new(command: "sleep", pid: 12345)
-    assert result.running?
+    result = Devex::Exec::Result.new(command: "sleep", pid: 12_345)
+    assert_predicate result, :running?
   end
 
   def test_not_running_when_exit_code_present
-    result = Devex::Exec::Result.new(command: "ls", pid: 12345, exit_code: 0)
-    refute result.running?
+    result = Devex::Exec::Result.new(command: "ls", pid: 12_345, exit_code: 0)
+    refute_predicate result, :running?
   end
 
   # ─────────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ class ResultTest < Minitest::Test
 
   def test_stdout_lines_empty_array_when_nil
     result = Devex::Exec::Result.new(command: "echo")
-    assert_equal [], result.stdout_lines
+    assert_empty result.stdout_lines
   end
 
   def test_stderr_lines_splits_output
@@ -104,13 +104,13 @@ class ResultTest < Minitest::Test
   end
 
   def test_then_returns_self_on_failure
-    result = Devex::Exec::Result.new(command: "ls", exit_code: 1)
+    result   = Devex::Exec::Result.new(command: "ls", exit_code: 1)
     returned = result.then { "other" }
     assert_same result, returned
   end
 
   def test_then_returns_block_result_on_success
-    result = Devex::Exec::Result.new(command: "ls", exit_code: 0)
+    result   = Devex::Exec::Result.new(command: "ls", exit_code: 0)
     returned = result.then { "block_value" }
     assert_equal "block_value", returned
   end
@@ -154,7 +154,7 @@ class ResultTest < Minitest::Test
 
   def test_to_s_shows_exception_class
     result = Devex::Exec::Result.new(
-      command: "cmd",
+      command:   "cmd",
       exception: Errno::ENOENT.new("no such file")
     )
     assert_includes result.to_s, "exception"
@@ -163,11 +163,11 @@ class ResultTest < Minitest::Test
 
   def test_inspect_shows_details
     result = Devex::Exec::Result.new(
-      command: ["ls", "-la"],
-      pid: 12345,
+      command:   ["ls", "-la"],
+      pid:       12_345,
       exit_code: 0,
-      duration: 0.123,
-      stdout: "output"
+      duration:  0.123,
+      stdout:    "output"
     )
     inspected = result.inspect
     assert_includes inspected, "command="
@@ -179,9 +179,9 @@ class ResultTest < Minitest::Test
 
   def test_to_h_returns_hash
     result = Devex::Exec::Result.new(
-      command: "ls",
+      command:   "ls",
       exit_code: 0,
-      stdout: "output"
+      stdout:    "output"
     )
     h = result.to_h
     assert_equal ["ls"], h[:command]
@@ -195,14 +195,14 @@ class ResultTest < Minitest::Test
   # ─────────────────────────────────────────────────────────────
 
   def test_from_exception_sets_exit_code_127
-    error = Errno::ENOENT.new("no such file")
+    error  = Errno::ENOENT.new("no such file")
     result = Devex::Exec::Result.from_exception(error, command: "nonexistent")
 
     assert_equal 127, result.exit_code
     assert_equal error, result.exception
-    assert result.failed?
+    assert_predicate result, :failed?
   end
 
-  # Note: from_status requires a real Process::Status object,
+  # NOTE: from_status requires a real Process::Status object,
   # which is hard to mock. We test it indirectly via integration tests.
 end

@@ -8,20 +8,16 @@ require "fileutils"
 class ProjectPathsTest < Minitest::Test
   def setup
     @tmpdir = Dir.mktmpdir("project_paths_test")
-    @prj = Devex::ProjectPaths.new(root: @tmpdir)
+    @prj    = Devex::ProjectPaths.new(root: @tmpdir)
   end
 
-  def teardown
-    FileUtils.rm_rf(@tmpdir) if @tmpdir && Dir.exist?(@tmpdir)
-  end
+  def teardown() FileUtils.rm_rf(@tmpdir) if @tmpdir && Dir.exist?(@tmpdir) end
 
   # ─────────────────────────────────────────────────────────────
   # Basic Access
   # ─────────────────────────────────────────────────────────────
 
-  def test_root_returns_project_root
-    assert_equal @tmpdir, @prj.root.to_s
-  end
+  def test_root_returns_project_root = assert_equal @tmpdir, @prj.root.to_s
 
   def test_glob_from_root
     File.write(File.join(@tmpdir, "a.rb"), "")
@@ -29,7 +25,7 @@ class ProjectPathsTest < Minitest::Test
 
     results = @prj["*.rb"]
     assert_equal 2, results.size
-    assert results.all? { |p| p.to_s.end_with?(".rb") }
+    assert(results.all? { |p| p.to_s.end_with?(".rb") })
   end
 
   # ─────────────────────────────────────────────────────────────
@@ -141,9 +137,7 @@ class ProjectPathsTest < Minitest::Test
   # Tools Detection
   # ─────────────────────────────────────────────────────────────
 
-  def test_tools_returns_tools_in_simple_mode
-    assert_equal File.join(@tmpdir, "tools"), @prj.tools.to_s
-  end
+  def test_tools_returns_tools_in_simple_mode = assert_equal File.join(@tmpdir, "tools"), @prj.tools.to_s
 
   def test_tools_returns_dx_tools_in_organized_mode
     FileUtils.mkdir_p(File.join(@tmpdir, ".dx"))
@@ -154,9 +148,7 @@ class ProjectPathsTest < Minitest::Test
   # Templates Detection
   # ─────────────────────────────────────────────────────────────
 
-  def test_templates_returns_templates_in_simple_mode
-    assert_equal File.join(@tmpdir, "templates"), @prj.templates.to_s
-  end
+  def test_templates_returns_templates_in_simple_mode = assert_equal File.join(@tmpdir, "templates"), @prj.templates.to_s
 
   def test_templates_returns_dx_templates_in_organized_mode
     FileUtils.mkdir_p(File.join(@tmpdir, ".dx"))
@@ -167,9 +159,7 @@ class ProjectPathsTest < Minitest::Test
   # Hooks Detection
   # ─────────────────────────────────────────────────────────────
 
-  def test_hooks_returns_hooks_in_simple_mode
-    assert_equal File.join(@tmpdir, "hooks"), @prj.hooks.to_s
-  end
+  def test_hooks_returns_hooks_in_simple_mode = assert_equal File.join(@tmpdir, "hooks"), @prj.hooks.to_s
 
   def test_hooks_returns_dx_hooks_in_organized_mode
     FileUtils.mkdir_p(File.join(@tmpdir, ".dx"))
@@ -180,13 +170,11 @@ class ProjectPathsTest < Minitest::Test
   # Organized Mode Detection
   # ─────────────────────────────────────────────────────────────
 
-  def test_organized_mode_false_without_dx_dir
-    refute @prj.organized_mode?
-  end
+  def test_organized_mode_false_without_dx_dir = refute_predicate @prj, :organized_mode?
 
   def test_organized_mode_true_with_dx_dir
     FileUtils.mkdir_p(File.join(@tmpdir, ".dx"))
-    assert @prj.organized_mode?
+    assert_predicate @prj, :organized_mode?
   end
 
   # ─────────────────────────────────────────────────────────────
@@ -200,7 +188,7 @@ class ProjectPathsTest < Minitest::Test
   end
 
   def test_override_raises_if_missing
-    prj = Devex::ProjectPaths.new(root: @tmpdir, overrides: { test: "nonexistent" })
+    prj   = Devex::ProjectPaths.new(root: @tmpdir, overrides: { test: "nonexistent" })
     error = assert_raises(RuntimeError) { prj.test }
     assert_includes error.message, "not found"
   end
@@ -211,7 +199,7 @@ class ProjectPathsTest < Minitest::Test
 
   def test_paths_are_cached
     FileUtils.mkdir_p(File.join(@tmpdir, "lib"))
-    first = @prj.lib
+    first  = @prj.lib
     second = @prj.lib
     assert_same first, second
   end

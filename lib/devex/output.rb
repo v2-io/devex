@@ -25,32 +25,30 @@ module Devex
     # (Not nerdfont glyphs or emoji that render as images)
     SYMBOLS = {
       success: "✓",
-      error: "✗",
+      error:   "✗",
       warning: "⚠",
-      info: "ℹ",
-      arrow: "→",
-      bullet: "•",
-      check: "✓",
-      cross: "✗",
-      dot: "·"
+      info:    "ℹ",
+      arrow:   "→",
+      bullet:  "•",
+      check:   "✓",
+      cross:   "✗",
+      dot:     "·"
     }.freeze
 
     # Color definitions (truecolor RGB values)
     COLORS = {
-      success: [0x5A, 0xF7, 0x8E],      # Green
-      error: [0xFF, 0x6B, 0x6B],        # Red
-      warning: [0xFF, 0xE6, 0x6D],      # Yellow
-      info: [0x6B, 0xC5, 0xFF],         # Blue
-      header: [0xC4, 0xB5, 0xFD],       # Purple
-      muted: [0x88, 0x88, 0x88],        # Gray
+      success:  [0x5A, 0xF7, 0x8E],      # Green
+      error:    [0xFF, 0x6B, 0x6B],        # Red
+      warning:  [0xFF, 0xE6, 0x6D],      # Yellow
+      info:     [0x6B, 0xC5, 0xFF],         # Blue
+      header:   [0xC4, 0xB5, 0xFD],       # Purple
+      muted:    [0x88, 0x88, 0x88],        # Gray
       emphasis: [0xFF, 0xFF, 0xFF]      # White
     }.freeze
 
     class << self
       # Get symbol - always unicode (basic unicode works everywhere)
-      def symbol(name)
-        SYMBOLS.fetch(name, name.to_s)
-      end
+      def symbol(name) = SYMBOLS.fetch(name, name.to_s)
 
       # Apply color to text if colors are enabled
       def colorize(text, color_name)
@@ -117,9 +115,7 @@ module Devex
       end
 
       # Print muted/secondary text
-      def muted(text, io: $stderr)
-        io.puts colorize(text, :muted)
-      end
+      def muted(text, io: $stderr) = io.puts colorize(text, :muted)
 
       # Print a bullet point
       def bullet(text, io: $stderr)
@@ -128,9 +124,7 @@ module Devex
       end
 
       # Print an indented line
-      def indent(text, level: 1, io: $stdout)
-        io.puts "#{" " * (level * 2)}#{text}"
-      end
+      def indent(text, level: 1, io: $stdout) = io.puts "#{' ' * (level * 2)}#{text}"
 
       # --- Structured output ---
 
@@ -158,14 +152,10 @@ module Devex
 
       # Start a new YAML document (use between multiple outputs)
       # The first document doesn't need this - YAML.dump adds --- automatically
-      def yaml_document_separator(io: $stdout)
-        io.print "---\n"
-      end
+      def yaml_document_separator(io: $stdout) = io.print "---\n"
 
       # End the YAML stream (use after all documents are written)
-      def yaml_end_stream(io: $stdout)
-        io.print "...\n"
-      end
+      def yaml_end_stream(io: $stdout) = io.print "...\n"
 
       # Output multiple objects as a YAML stream with proper separators
       def yaml_stream(objects, io: $stdout)
@@ -206,12 +196,12 @@ module Devex
         return if Context.agent_mode?
         return unless Context.interactive?
 
-        pct = (current.to_f / total * 100).round
+        pct       = (current.to_f / total * 100).round
         bar_width = 20
-        filled = (bar_width * current / total).round
-        empty = bar_width - filled
+        filled    = (bar_width * current / total).round
+        empty     = bar_width - filled
 
-        bar = "█" * filled + "░" * empty
+        bar        = ("█" * filled) + ("░" * empty)
         label_text = label ? "#{label}: " : ""
 
         # Use carriage return to update in place
@@ -230,72 +220,38 @@ module Devex
     # Instance methods that delegate to class methods
     # These are included when a task does `include Devex::Output`
 
-    def header(text)
-      Output.header(text)
-    end
+    def header(text) = Output.header(text)
 
-    def success(text)
-      Output.success(text)
-    end
+    def success(text) = Output.success(text)
 
-    def error(text)
-      Output.error(text)
-    end
+    def error(text) = Output.error(text)
 
-    def warn(text)
-      Output.warn(text)
-    end
+    def warn(text) = Output.warn(text)
 
-    def info(text)
-      Output.info(text)
-    end
+    def info(text) = Output.info(text)
 
-    def muted(text)
-      Output.muted(text)
-    end
+    def muted(text) = Output.muted(text)
 
-    def bullet(text)
-      Output.bullet(text)
-    end
+    def bullet(text) = Output.bullet(text)
 
-    def indent(text, level: 1)
-      Output.indent(text, level: level)
-    end
+    def indent(text, level: 1) = Output.indent(text, level: level)
 
-    def data(obj, format: nil)
-      Output.data(obj, format: format)
-    end
+    def data(obj, format: nil) = Output.data(obj, format: format)
 
-    def yaml_stream(objects)
-      Output.yaml_stream(objects)
-    end
+    def yaml_stream(objects) = Output.yaml_stream(objects)
 
-    def jsonl_stream(objects)
-      Output.jsonl_stream(objects)
-    end
+    def jsonl_stream(objects) = Output.jsonl_stream(objects)
 
-    def yaml_document_separator
-      Output.yaml_document_separator
-    end
+    def yaml_document_separator = Output.yaml_document_separator
 
-    def yaml_end_stream
-      Output.yaml_end_stream
-    end
+    def yaml_end_stream = Output.yaml_end_stream
 
-    def render_template(template_string, bind = nil)
-      Output.render_template(template_string, bind)
-    end
+    def render_template(template_string, bind = nil) = Output.render_template(template_string, bind)
 
-    def render_template_file(path, bind = nil)
-      Output.render_template_file(path, bind)
-    end
+    def render_template_file(path, bind = nil) = Output.render_template_file(path, bind)
 
-    def progress(current, total, label: nil)
-      Output.progress(current, total, label: label)
-    end
+    def progress(current, total, label: nil) = Output.progress(current, total, label: label)
 
-    def clear_line
-      Output.clear_line
-    end
+    def clear_line = Output.clear_line
   end
 end

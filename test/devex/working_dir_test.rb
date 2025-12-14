@@ -27,13 +27,9 @@ class WorkingDirTest < Minitest::Test
   # Basic Access
   # ─────────────────────────────────────────────────────────────
 
-  def test_current_defaults_to_project_dir
-    assert_equal Devex::Dirs.project_dir.to_s, Devex::WorkingDir.current.to_s
-  end
+  def test_current_defaults_to_project_dir = assert_equal Devex::Dirs.project_dir.to_s, Devex::WorkingDir.current.to_s
 
-  def test_depth_starts_at_zero
-    assert_equal 0, Devex::WorkingDir.depth
-  end
+  def test_depth_starts_at_zero = assert_equal 0, Devex::WorkingDir.depth
 
   # ─────────────────────────────────────────────────────────────
   # Within Blocks
@@ -50,7 +46,7 @@ class WorkingDirTest < Minitest::Test
 
   def test_within_restores_working_dir
     original = Devex::WorkingDir.current.to_s
-    subdir = File.join(@tmpdir, "subdir")
+    subdir   = File.join(@tmpdir, "subdir")
     FileUtils.mkdir_p(subdir)
 
     Devex::WorkingDir.within("subdir") do
@@ -62,7 +58,7 @@ class WorkingDirTest < Minitest::Test
 
   def test_within_restores_on_exception
     original = Devex::WorkingDir.current.to_s
-    subdir = File.join(@tmpdir, "subdir")
+    subdir   = File.join(@tmpdir, "subdir")
     FileUtils.mkdir_p(subdir)
 
     begin
@@ -167,11 +163,7 @@ class WorkingDirTest < Minitest::Test
   # Edge Cases
   # ─────────────────────────────────────────────────────────────
 
-  def test_within_rejects_invalid_type
-    assert_raises(ArgumentError) do
-      Devex::WorkingDir.within(123) { }
-    end
-  end
+  def test_within_rejects_invalid_type = assert_raises(ArgumentError) { Devex::WorkingDir.within(123) {} }
 
   def test_stack_returns_copy
     FileUtils.mkdir_p(File.join(@tmpdir, "a"))
@@ -186,7 +178,5 @@ class WorkingDirTest < Minitest::Test
   private
 
   # Compare paths using realpath to handle /var -> /private/var on macOS
-  def assert_paths_equal(expected, actual, msg = nil)
-    assert_equal File.realpath(expected), File.realpath(actual), msg
-  end
+  def assert_paths_equal(expected, actual, msg = nil) = assert_equal File.realpath(expected), File.realpath(actual), msg
 end

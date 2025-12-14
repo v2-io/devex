@@ -8,12 +8,10 @@ require "fileutils"
 class PathTest < Minitest::Test
   def setup
     @tmpdir = Dir.mktmpdir("path_test")
-    @path = Devex::Support::Path.new(@tmpdir)
+    @path   = Devex::Support::Path.new(@tmpdir)
   end
 
-  def teardown
-    FileUtils.rm_rf(@tmpdir) if @tmpdir && Dir.exist?(@tmpdir)
-  end
+  def teardown() FileUtils.rm_rf(@tmpdir) if @tmpdir && Dir.exist?(@tmpdir) end
 
   # ─────────────────────────────────────────────────────────────
   # Construction
@@ -60,57 +58,40 @@ class PathTest < Minitest::Test
     assert_instance_of Devex::Support::Path, path
   end
 
-  def test_join_with_no_args_returns_self
-    assert_equal @path, @path.join
-  end
+  def test_join_with_no_args_returns_self = assert_equal @path, @path.join
 
   # ─────────────────────────────────────────────────────────────
   # Permission Checks
   # ─────────────────────────────────────────────────────────────
 
-  def test_r_checks_readable
-    assert @path.r?
-  end
+  def test_r_checks_readable = assert_predicate @path, :r?
 
-  def test_w_checks_writable
-    assert @path.w?
-  end
+  def test_w_checks_writable = assert_predicate @path, :w?
 
-  def test_rw_checks_both
-    assert @path.rw?
-  end
+  def test_rw_checks_both = assert_predicate @path, :rw?
 
-  def test_x_checks_executable
-    # Directories are typically executable (traversable)
-    assert @path.x?
-  end
+  def test_x_checks_executable = assert_predicate @path, :x?
 
   # ─────────────────────────────────────────────────────────────
   # Type Checks
   # ─────────────────────────────────────────────────────────────
 
-  def test_dir_returns_true_for_directory
-    assert @path.dir?
-  end
+  def test_dir_returns_true_for_directory = assert_predicate @path, :dir?
 
   def test_dir_returns_false_for_file
     file_path = @path / "test.txt"
     File.write(file_path.to_s, "content")
-    refute file_path.dir?
+    refute_predicate file_path, :dir?
   end
 
   def test_missing_returns_true_for_nonexistent
     path = @path / "nonexistent"
-    assert path.missing?
+    assert_predicate path, :missing?
   end
 
-  def test_missing_returns_false_for_existing
-    refute @path.missing?
-  end
+  def test_missing_returns_false_for_existing = refute_predicate @path, :missing?
 
-  def test_existence_returns_self_when_exists
-    assert_equal @path, @path.existence
-  end
+  def test_existence_returns_self_when_exists = assert_equal @path, @path.existence
 
   def test_existence_returns_nil_when_missing
     path = @path / "nonexistent"
@@ -149,7 +130,7 @@ class PathTest < Minitest::Test
   end
 
   def test_reload_clears_memoization
-    path = @path.dup
+    path      = @path.dup
     first_exp = path.exp
     path.reload!
     # After reload, should get new object (though same value)
@@ -181,15 +162,15 @@ class PathTest < Minitest::Test
 
   def test_rel_skips_home_substitution_when_disabled
     home_path = Devex::Support::Path[Dir.home] / "test"
-    rel = home_path.rel(from: Devex::Support::Path["/"], home: false)
+    rel       = home_path.rel(from: Devex::Support::Path["/"], home: false)
     refute_includes rel.to_s, "~"
   end
 
   def test_short_returns_shortest_representation
     # This is a heuristic test - short should return something reasonable
-    path = Devex::Support::Path.pwd / "test"
+    path  = Devex::Support::Path.pwd / "test"
     short = path.short
-    assert short.to_s.length <= path.to_s.length
+    assert_operator short.to_s.length, :<=, path.to_s.length
   end
 
   # ─────────────────────────────────────────────────────────────
@@ -204,13 +185,13 @@ class PathTest < Minitest::Test
 
     results = @path["*.txt"]
     assert_equal 2, results.size
-    assert results.all? { |p| p.to_s.end_with?(".txt") }
+    assert(results.all? { |p| p.to_s.end_with?(".txt") })
   end
 
   def test_glob_returns_path_instances
     File.write((@path / "test.txt").to_s, "test")
     results = @path["*.txt"]
-    assert results.all? { |p| p.is_a?(Devex::Support::Path) }
+    assert(results.all? { |p| p.is_a?(Devex::Support::Path) })
   end
 
   def test_glob_method_alias
@@ -222,9 +203,7 @@ class PathTest < Minitest::Test
   # Directory Operations
   # ─────────────────────────────────────────────────────────────
 
-  def test_dir_returns_self_for_directory
-    assert_equal @path.exp, @path.dir
-  end
+  def test_dir_returns_self_for_directory = assert_equal @path.exp, @path.dir
 
   def test_dir_returns_dirname_for_file
     file_path = @path / "test.txt"
@@ -234,9 +213,9 @@ class PathTest < Minitest::Test
 
   def test_dir_bang_creates_parent_directories
     deep_path = @path / "a" / "b" / "c" / "file.txt"
-    result = deep_path.dir!
+    result    = deep_path.dir!
     assert_same deep_path, result
-    assert (@path / "a" / "b" / "c").exist?
+    assert_predicate (@path / "a" / "b" / "c"), :exist?
   end
 
   def test_dir_bang_returns_nil_on_error
@@ -249,10 +228,10 @@ class PathTest < Minitest::Test
 
   def test_mkdir_bang_creates_directory
     new_dir = @path / "new_directory"
-    result = new_dir.mkdir!
+    result  = new_dir.mkdir!
     assert_same new_dir, result
-    assert new_dir.exist?
-    assert new_dir.dir?
+    assert_predicate new_dir, :exist?
+    assert_predicate new_dir, :dir?
   end
 
   # ─────────────────────────────────────────────────────────────
@@ -269,12 +248,12 @@ class PathTest < Minitest::Test
     file_path = @path / "test.txt"
     File.write(file_path.to_s, "line1\nline2\nline3")
     lines = file_path.lines
-    assert_equal ["line1", "line2", "line3"], lines
+    assert_equal %w[line1 line2 line3], lines
   end
 
   def test_write_creates_file
     file_path = @path / "new.txt"
-    result = file_path.write("content")
+    result    = file_path.write("content")
     assert_same file_path, result
     assert_equal "content", File.read(file_path.to_s)
   end
@@ -282,7 +261,7 @@ class PathTest < Minitest::Test
   def test_write_creates_parent_directories
     file_path = @path / "deep" / "nested" / "file.txt"
     file_path.write("content")
-    assert file_path.exist?
+    assert_predicate file_path, :exist?
   end
 
   def test_append_adds_to_file
@@ -340,19 +319,19 @@ class PathTest < Minitest::Test
   # ─────────────────────────────────────────────────────────────
 
   def test_with_ext_replaces_extension
-    path = Devex::Support::Path.new("/path/to/file.txt")
+    path     = Devex::Support::Path.new("/path/to/file.txt")
     new_path = path.with_ext(".md")
     assert_equal "/path/to/file.md", new_path.to_s
   end
 
   def test_with_ext_adds_dot_if_missing
-    path = Devex::Support::Path.new("/path/to/file.txt")
+    path     = Devex::Support::Path.new("/path/to/file.txt")
     new_path = path.with_ext("md")
     assert_equal "/path/to/file.md", new_path.to_s
   end
 
   def test_without_ext_removes_extension
-    path = Devex::Support::Path.new("/path/to/file.txt")
+    path     = Devex::Support::Path.new("/path/to/file.txt")
     new_path = path.without_ext
     assert_equal "/path/to/file", new_path.to_s
   end
@@ -362,26 +341,26 @@ class PathTest < Minitest::Test
   # ─────────────────────────────────────────────────────────────
 
   def test_sibling_returns_path_in_same_directory
-    path = @path / "original.txt"
+    path    = @path / "original.txt"
     sibling = path.sibling("other.txt")
     assert_equal (@path / "other.txt").to_s, sibling.to_s
   end
 
   def test_parent_returns_path_instance
-    path = @path / "subdir"
+    path   = @path / "subdir"
     parent = path.parent
     assert_equal @path.to_s, parent.to_s
     assert_instance_of Devex::Support::Path, parent
   end
 
   def test_dirname_returns_path_instance
-    path = @path / "subdir"
+    path    = @path / "subdir"
     dirname = path.dirname
     assert_instance_of Devex::Support::Path, dirname
   end
 
   def test_basename_returns_path_instance
-    path = @path / "subdir"
+    path     = @path / "subdir"
     basename = path.basename
     assert_equal "subdir", basename.to_s
     assert_instance_of Devex::Support::Path, basename
@@ -408,7 +387,7 @@ class PathTest < Minitest::Test
   end
 
   def test_string_method_returning_path_like_string
-    path = Devex::Support::Path.new("/path/to/file.txt")
+    path   = Devex::Support::Path.new("/path/to/file.txt")
     result = path.sub("file", "other")
     # Should return Path if result looks like a path
     assert_instance_of Devex::Support::Path, result

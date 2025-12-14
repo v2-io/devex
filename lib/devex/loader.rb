@@ -21,9 +21,9 @@ module Devex
     end
 
     def initialize(dir, root_tool, mixins = {})
-      @dir = dir
+      @dir       = dir
       @root_tool = root_tool
-      @mixins = mixins
+      @mixins    = mixins
     end
 
     def load
@@ -50,7 +50,7 @@ module Devex
     private
 
     def load_index(file)
-      code = File.read(file)
+      code    = File.read(file)
       context = IndexDSL.new(@root_tool, @mixins)
       context.instance_eval(code, file)
     end
@@ -98,44 +98,28 @@ module Devex
   # DSL for index files - can define mixins
   class IndexDSL
     def initialize(tool, mixins)
-      @tool = tool
+      @tool   = tool
       @mixins = mixins
-      @dsl = DSL.new(tool)
+      @dsl    = DSL.new(tool)
     end
 
     # Define a mixin
-    def mixin(name, &block)
-      @mixins[name.to_s] = block
-    end
+    def mixin(name, &block) = @mixins[name.to_s] = block
 
     # Forward to regular DSL
-    def desc(text)
-      @dsl.desc(text)
-    end
+    def desc(text) = @dsl.desc(text)
 
-    def long_desc(text)
-      @dsl.long_desc(text)
-    end
+    def long_desc(text) = @dsl.long_desc(text)
 
-    def flag(name, *specs, **kwargs)
-      @dsl.flag(name, *specs, **kwargs)
-    end
+    def flag(name, *specs, **) = @dsl.flag(name, *specs, **)
 
-    def required_arg(name, **kwargs)
-      @dsl.required_arg(name, **kwargs)
-    end
+    def required_arg(name, **) = @dsl.required_arg(name, **)
 
-    def optional_arg(name, **kwargs)
-      @dsl.optional_arg(name, **kwargs)
-    end
+    def optional_arg(name, **) = @dsl.optional_arg(name, **)
 
-    def tool(name, &block)
-      @dsl.tool(name, &block)
-    end
+    def tool(name, &) = @dsl.tool(name, &)
 
-    def to_run(&block)
-      @dsl.to_run(&block)
-    end
+    def to_run(&) = @dsl.to_run(&)
 
     # Capture run method
     def run
@@ -143,12 +127,10 @@ module Devex
     end
 
     # Allow arbitrary methods (for mixin definitions)
-    def method_missing(name, *args, &block)
+    def method_missing(name, *args, &)
       # Ignore - these are likely mixin method definitions
     end
 
-    def respond_to_missing?(name, include_private = false)
-      true
-    end
+    def respond_to_missing?(_name, _include_private = false) = true
   end
 end

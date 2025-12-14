@@ -8,7 +8,7 @@ require "fileutils"
 class DirsTest < Minitest::Test
   def setup
     @original_pwd = Dir.pwd
-    @tmpdir = Dir.mktmpdir("dirs_test")
+    @tmpdir       = Dir.mktmpdir("dirs_test")
     Devex::Dirs.reset!
   end
 
@@ -63,8 +63,8 @@ class DirsTest < Minitest::Test
 
   def test_dx_src_dir_points_to_gem_root
     src = Devex::Dirs.dx_src_dir
-    assert src.exist?
-    assert (src / "lib" / "devex").exist?
+    assert_predicate src, :exist?
+    assert_predicate (src / "lib" / "devex"), :exist?
   end
 
   # ─────────────────────────────────────────────────────────────
@@ -105,22 +105,20 @@ class DirsTest < Minitest::Test
     create_project_marker
     Dir.chdir(@tmpdir)
     Devex::Dirs.reset!
-    assert Devex::Dirs.in_project?
+    assert_predicate Devex::Dirs, :in_project?
   end
 
   def test_in_project_returns_false_when_not_in_project
     # Use /tmp which shouldn't have project markers going up
     Dir.chdir(Dir.tmpdir)
     Devex::Dirs.reset!
-    refute Devex::Dirs.in_project?
+    refute_predicate Devex::Dirs, :in_project?
   end
 
   private
 
   # Compare paths using realpath to handle /var -> /private/var on macOS
-  def assert_paths_equal(expected, actual, msg = nil)
-    assert_equal File.realpath(expected), File.realpath(actual), msg
-  end
+  def assert_paths_equal(expected, actual, msg = nil) = assert_equal File.realpath(expected), File.realpath(actual), msg
 
   def create_project_marker(marker = ".git")
     path = File.join(@tmpdir, marker)

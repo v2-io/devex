@@ -25,14 +25,10 @@ module Devex
   class << self
     # Root directory of the devex gem itself
     # Used for locating built-in templates, builtins, etc.
-    def gem_root
-      @gem_root ||= File.expand_path("../..", __FILE__)
-    end
+    def gem_root = @gem_root ||= File.expand_path('..', __dir__)
 
     # Path to the templates directory within the gem
-    def templates_path
-      @templates_path ||= File.join(File.dirname(__FILE__), "devex", TEMPLATES_DIR)
-    end
+    def templates_path = @templates_path ||= File.join(File.dirname(__FILE__), "devex", TEMPLATES_DIR)
 
     # Load and render a template from the gem's templates directory
     # Returns the rendered string
@@ -60,6 +56,7 @@ module Devex
       name = "#{name}.erb" unless name.end_with?(".erb")
       File.join(templates_path, name)
     end
+
     # Find the project root by walking up from the given directory
     # looking for root markers (.dx.yml, .git, tools/)
     #
@@ -70,9 +67,7 @@ module Devex
       loop do
         ROOT_MARKERS.each do |marker|
           marker_path = File.join(dir, marker)
-          if File.exist?(marker_path)
-            return [dir, marker]
-          end
+          return [dir, marker] if File.exist?(marker_path)
         end
 
         parent = File.dirname(dir)
@@ -89,7 +84,7 @@ module Devex
     def tools_dir(project_root)
       return nil unless project_root
 
-      config = load_config(project_root)
+      config         = load_config(project_root)
       tools_dir_name = config["tools_dir"] || DEFAULT_TOOLS_DIR
 
       dir = File.join(project_root, tools_dir_name)
@@ -131,7 +126,7 @@ module Devex
 
       if File.exist?(config_file)
         require "yaml"
-        YAML.safe_load(File.read(config_file)) || {}
+        YAML.safe_load_file(config_file) || {}
       else
         {}
       end

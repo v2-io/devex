@@ -61,15 +61,15 @@ module Devex
         exception: nil,
         options: {}
       )
-        @command = Array(command)
-        @pid = pid
-        @duration = duration
-        @exit_code = exit_code
+        @command     = Array(command)
+        @pid         = pid
+        @duration    = duration
+        @exit_code   = exit_code
         @signal_code = signal_code
-        @stdout = stdout
-        @stderr = stderr
-        @exception = exception
-        @options = options
+        @stdout      = stdout
+        @stderr      = stderr
+        @exception   = exception
+        @options     = options
       end
 
       # ─────────────────────────────────────────────────────────────
@@ -77,29 +77,19 @@ module Devex
       # ─────────────────────────────────────────────────────────────
 
       # @return [Boolean] true if exit code is 0
-      def success?
-        exit_code == 0 && !exception
-      end
+      def success? = exit_code == 0 && !exception
 
       # @return [Boolean] true if exit code is non-zero or there was an exception
-      def failed?
-        !success?
-      end
+      def failed? = !success?
 
       # @return [Boolean] true if process was killed by a signal
-      def signaled?
-        !signal_code.nil?
-      end
+      def signaled? = !signal_code.nil?
 
       # @return [Boolean] true if process was killed due to timeout
-      def timed_out?
-        options[:timed_out] == true
-      end
+      def timed_out? = options[:timed_out] == true
 
       # @return [Boolean] true if the process started but we're still waiting
-      def running?
-        pid && exit_code.nil? && signal_code.nil? && !exception
-      end
+      def running? = pid && exit_code.nil? && signal_code.nil? && !exception
 
       # ─────────────────────────────────────────────────────────────
       # Output Access
@@ -109,18 +99,15 @@ module Devex
       # @return [String, nil]
       def output
         return nil unless stdout || stderr
+
         [stdout, stderr].compact.join
       end
 
       # @return [Array<String>] stdout split into lines
-      def stdout_lines
-        stdout&.lines(chomp: true) || []
-      end
+      def stdout_lines = stdout&.lines(chomp: true) || []
 
       # @return [Array<String>] stderr split into lines
-      def stderr_lines
-        stderr&.lines(chomp: true) || []
-      end
+      def stderr_lines = stderr&.lines(chomp: true) || []
 
       # ─────────────────────────────────────────────────────────────
       # Monad Operations
@@ -135,9 +122,9 @@ module Devex
         return self if success?
 
         if message
-          $stderr.puts message
+          warn message
         elsif exception
-          $stderr.puts "Command failed to start: #{exception.message}"
+          warn "Command failed to start: #{exception.message}"
         end
 
         exit(exit_code || 1)
@@ -150,6 +137,7 @@ module Devex
       # @return [Result] Block's result or self if failed
       def then
         return self if failed?
+
         yield
       end
 
@@ -159,6 +147,7 @@ module Devex
       # @return [Object, nil] Block's result or nil if failed
       def map
         return nil if failed?
+
         yield stdout
       end
 
@@ -186,7 +175,7 @@ module Devex
         parts << "pid=#{pid}" if pid
         parts << "exit_code=#{exit_code}" if exit_code
         parts << "signal_code=#{signal_code}" if signal_code
-        parts << "duration=#{"%.3f" % duration}s" if duration
+        parts << "duration=#{'%.3f' % duration}s" if duration
         parts << "stdout=#{stdout.bytesize}b" if stdout
         parts << "stderr=#{stderr.bytesize}b" if stderr
         parts << "exception=#{exception.class}" if exception
@@ -197,15 +186,15 @@ module Devex
       # @return [Hash] Result as a hash (for JSON serialization, etc.)
       def to_h
         {
-          command: command,
-          pid: pid,
-          exit_code: exit_code,
+          command:     command,
+          pid:         pid,
+          exit_code:   exit_code,
           signal_code: signal_code,
-          duration: duration,
-          success: success?,
-          stdout: stdout,
-          stderr: stderr,
-          exception: exception&.message
+          duration:    duration,
+          success:     success?,
+          stdout:      stdout,
+          stderr:      stderr,
+          exception:   exception&.message
         }.compact
       end
 
@@ -215,23 +204,23 @@ module Devex
 
       class << self
         # Create a Result from Process::Status
-        def from_status(status, command:, **opts)
+        def from_status(status, command:, **)
           new(
-            command: command,
-            pid: status.pid,
-            exit_code: status.exited? ? status.exitstatus : nil,
+            command:     command,
+            pid:         status.pid,
+            exit_code:   status.exited? ? status.exitstatus : nil,
             signal_code: status.signaled? ? status.termsig : nil,
-            **opts
+            **
           )
         end
 
         # Create a Result for a failed-to-start command
-        def from_exception(exception, command:, **opts)
+        def from_exception(exception, command:, **)
           new(
-            command: command,
+            command:   command,
             exception: exception,
             exit_code: 127,  # Convention for "command not found"
-            **opts
+            **
           )
         end
       end

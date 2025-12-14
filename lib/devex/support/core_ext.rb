@@ -20,131 +20,105 @@ module Devex
       # ─────────────────────────────────────────────────────────────
 
       module ObjectMethods
-        def blank?
-          respond_to?(:empty?) ? empty? : !self
-        end
+        def blank? = respond_to?(:empty?) ? empty? : !self
 
-        def present?
-          !blank?
-        end
+        def present? = !blank?
 
-        def presence
-          self if present?
-        end
+        def presence() self if present? end
 
         def numeric?
-          true if Float(self) rescue false
+          true if Float(self)
+        rescue StandardError
+          false
         end
 
-        def in?(collection)
-          collection.include?(self)
-        end
+        def in?(collection) = collection.include?(self)
       end
 
       module NilMethods
-        def blank? = true
+        def blank?   = true
         def present? = false
         def presence = nil
       end
 
       module FalseMethods
-        def blank? = true
+        def blank?   = true
         def present? = false
         def presence = nil
       end
 
       module TrueMethods
-        def blank? = false
+        def blank?   = false
         def present? = true
         def presence = self
       end
 
       module NumericMethods
-        def blank? = false
+        def blank?   = false
         def present? = true
         def presence = self
         def numeric? = true
       end
 
       module ArrayBlankMethods
-        def blank? = empty?
+        def blank?   = empty?
         def present? = !blank?
-        def presence
-          self if present?
-        end
+
+        def presence() self if present? end
       end
 
       module HashBlankMethods
-        def blank? = empty?
+        def blank?   = empty?
         def present? = !blank?
-        def presence
-          self if present?
-        end
+
+        def presence() self if present? end
       end
 
       module StringMethods
-        def blank?
-          empty? || !match?(/[^[:space:]]/)
-        end
+        def blank? = empty? || !match?(/[^[:space:]]/)
 
         # Override present? to use String's blank? (import_methods copies bytecode,
         # so ObjectMethods#present? would call Object's blank?)
-        def present?
-          !blank?
-        end
+        def present? = !blank?
 
-        def presence
-          self if present?
-        end
+        def presence() self if present? end
 
-        def to_p
-          Devex::Support::Path.new(self)
-        end
+        def to_p = Devex::Support::Path.new(self)
 
         def wrap(indent = :first, width = 90)
           ind = case indent
-                when :first  then self[/^[[:space:]]*/] || ""
+                when :first then self[/^[[:space:]]*/] || ""
                 when ::String  then indent
                 when ::Integer then " " * indent.abs
                 else ""
                 end
 
-          ind_size = ind.count("\t") * 8 + ind.length - ind.count("\t")
+          ind_size        = (ind.count("\t") * 8) + ind.length - ind.count("\t")
           effective_width = [width - ind_size, 1].max
 
           paragraphs = strip.split(/\n[ \t]*\n/m)
-          paragraphs.map { |p|
+          paragraphs.map do |p|
             p.gsub(/[[:space:]]+/, " ")
              .strip
              .scan(/.{1,#{effective_width}}(?: |$)/)
              .map { |row| ind + row.strip }
              .join("\n")
-          }.join("\n\n")
+          end.join("\n\n")
         end
 
-        def sentences
-          gsub(/\s+/, " ")
-            .scan(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/)
-            .map(&:strip)
-            .reject(&:empty?)
-        end
+        def sentences = gsub(/\s+/, " ").scan(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/).map(&:strip).reject(&:empty?)
 
         def to_sh
           return "''" if empty?
-          gsub(/([^A-Za-z0-9_\-.,:\/@\n])/, '\\\\\\\\\\1').gsub("\n", "'\n'")
+
+          gsub(%r{([^A-Za-z0-9_\-.,:/@\n])}, '\\\\\\\\\\1').gsub("\n", "'\n'")
         end
 
-        def squish
-          gsub(/[[:space:]]+/, " ").strip
-        end
+        def squish = gsub(/[[:space:]]+/, " ").strip
 
-        def fnv32
-          bytes.reduce(0x811c9dc5) { |h, b| ((h ^ b) * 0x01000193) % (1 << 32) }
-        end
+        def fnv32 = bytes.reduce(0x811c9dc5) { |h, b| ((h ^ b) * 0x01000193) % (1 << 32) }
 
-        def fnv64
-          bytes.reduce(0xcbf29ce484222325) { |h, b| ((h ^ b) * 0x100000001b3) % (1 << 64) }
-        end
+        def fnv64 = bytes.reduce(0xcbf29ce484222325) { |h, b| ((h ^ b) * 0x100000001b3) % (1 << 64) }
 
         def base64url
           require "base64"
@@ -153,6 +127,7 @@ module Devex
 
         def truncate(length, omission: "...")
           return self if self.length <= length
+
           stop = length - omission.length
           stop = 0 if stop < 0
           self[0, stop] + omission
@@ -161,6 +136,7 @@ module Devex
         def truncate_words(count, omission: "...")
           words = split
           return self if words.length <= count
+
           words.first(count).join(" ") + omission
         end
 
@@ -169,55 +145,36 @@ module Devex
           gsub(/^/, prefix)
         end
 
-        def remove(pattern)
-          gsub(pattern, "")
-        end
+        def remove(pattern) = gsub(pattern, "")
 
         # ─────────────────────────────────────────────────────────────
         # Case Transforms
         # ─────────────────────────────────────────────────────────────
 
         # ALL UPPER CASE
-        def up_case
-          upcase
-        end
+        def up_case = upcase
 
         # all lower case
-        def down_case
-          downcase
-        end
+        def down_case = downcase
 
         # snake_case
         # Converts CamelCase, kebab-case, spaces to snake_case
-        def snake_case
-          gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
-            .gsub(/([a-z\d])([A-Z])/, '\1_\2')
-            .gsub(/[\s\-]+/, "_")
-            .downcase
-        end
+        def snake_case = gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2').gsub(/([a-z\d])([A-Z])/, '\1_\2').gsub(/[\s-]+/, "_").downcase
 
         # SCREAM_CASE (screaming snake case / constant case)
-        def scream_case
-          snake_case.upcase
-        end
+        def scream_case = snake_case.upcase
 
         # kebab-case
-        def kebab_case
-          snake_case.tr("_", "-")
-        end
+        def kebab_case = snake_case.tr("_", "-")
 
         # PascalCase (first letter uppercase)
-        def pascal_case
-          snake_case
-            .split("_")
-            .map(&:capitalize)
-            .join
-        end
+        def pascal_case = snake_case.split("_").map(&:capitalize).join
 
         # camelCase (first letter lowercase)
         def camel_case
           result = pascal_case
           return result if result.empty?
+
           result[0] = result[0].downcase
           result
         end
@@ -245,7 +202,7 @@ module Devex
           return self if word_indices.empty?
 
           first_word_idx = word_indices.first
-          last_word_idx = word_indices.last
+          last_word_idx  = word_indices.last
 
           tokens.each_with_index.map do |token, idx|
             if token.match?(/^[\s-]+$/)
@@ -266,38 +223,40 @@ module Devex
 
         # Aliases without underscores
         # Note: upcase and downcase are Ruby native - don't override
-        def snakecase = snake_case
+        def snakecase  = snake_case
         def screamcase = scream_case
-        def kebabcase = kebab_case
+        def kebabcase  = kebab_case
         def pascalcase = pascal_case
-        def camelcase = camel_case
-        def titlecase = title_case
+        def camelcase  = camel_case
+        def titlecase  = title_case
 
         # Additional common aliases
-        def upper = up_case
-        def uppercase = up_case
+        def upper      = up_case
+        def uppercase  = up_case
         def upper_case = up_case
-        def caps = up_case
+        def caps       = up_case
 
-        def lower = down_case
-        def lowercase = down_case
+        def lower      = down_case
+        def lowercase  = down_case
         def lower_case = down_case
 
         def var_case = snake_case
-        def varcase = snake_case
+        def varcase  = snake_case
 
         def const_case = scream_case
-        def constcase = scream_case
+        def constcase  = scream_case
 
         def mod_case = pascal_case
-        def modcase = pascal_case
+        def modcase  = pascal_case
       end
 
       module EnumerableMethods
         def average
           return 0.0 if respond_to?(:empty?) && empty?
+
           arr = to_a
           return 0.0 if arr.empty?
+
           arr.sum.to_f / arr.size
         end
 
@@ -306,6 +265,7 @@ module Devex
         def median
           arr = to_a.sort
           return nil if arr.empty?
+
           mid = arr.size / 2
           arr.size.odd? ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2.0
         end
@@ -313,26 +273,27 @@ module Devex
         def sample_variance
           arr = to_a
           return 0.0 if arr.size < 2
+
           avg = arr.sum.to_f / arr.size
           arr.sum { |x| (x - avg) ** 2 } / (arr.size - 1).to_f
         end
 
         def variance = sample_variance
 
-        def standard_deviation
-          Math.sqrt(sample_variance)
-        end
+        def standard_deviation = Math.sqrt(sample_variance)
 
         def stddev = standard_deviation
 
         def percentile(p)
           arr = to_a.sort
           return nil if arr.empty?
+
           k = (p / 100.0) * (arr.size - 1)
           f = k.floor
           c = k.ceil
           return arr[f] if f == c
-          arr[f] * (c - k) + arr[c] * (k - f)
+
+          (arr[f] * (c - k)) + (arr[c] * (k - f))
         end
 
         def q20 = percentile(20)
@@ -341,32 +302,36 @@ module Devex
         def robust_average
           arr = to_a
           return nil if arr.empty?
+
           (q20.to_f + median.to_f + q80.to_f) / 3.0
         end
 
-        def amap(method, *args, &block)
-          map { |item| item.send(method, *args, &block) }
-        end
+        def amap(method, *args, &block) = map { |item| item.send(method, *args, &block) }
 
         def summarize_runs
           arr = to_a
           return [] if arr.empty?
+
           arr.chunk_while { |a, b| a == b }.map { |run| [run.size, run.first] }
         end
 
         def many?
           count = 0
           if block_given?
-            each { |e| count += 1 if yield(e); return true if count > 1 }
+            each do |e|
+              count += 1 if yield(e)
+              return true if count > 1
+            end
           else
-            each { count += 1; return true if count > 1 }
+            each do
+              count += 1
+              return true if count > 1
+            end
           end
           false
         end
 
-        def index_by
-          each_with_object({}) { |e, h| h[yield(e)] = e }
-        end
+        def index_by = each_with_object({}) { |e, h| h[yield(e)] = e }
 
         def index_with(default = nil)
           if block_given?
@@ -376,15 +341,11 @@ module Devex
           end
         end
 
-        def excluding(*elements)
-          reject { |e| elements.include?(e) }
-        end
+        def excluding(*elements) = reject { |e| elements.include?(e) }
 
         def without(*elements) = excluding(*elements)
 
-        def including(*elements)
-          to_a + elements
-        end
+        def including(*elements) = to_a + elements
 
         def pluck(*keys)
           if keys.one?
@@ -397,25 +358,25 @@ module Devex
       end
 
       module ArrayMethods
-        def second = self[1]
-        def third = self[2]
-        def fourth = self[3]
-        def fifth = self[4]
+        def second         = self[1]
+        def third          = self[2]
+        def fourth         = self[3]
+        def fifth          = self[4]
         def second_to_last = self[-2]
-        def third_to_last = self[-3]
+        def third_to_last  = self[-3]
 
         def to_sentence(connector: ", ", last_connector: ", and ")
           case size
           when 0 then ""
           when 1 then first.to_s
-          when 2 then "#{first}#{last_connector.sub(/^, /, " ")}#{second}"
+          when 2 then "#{first}#{last_connector.sub(/^, /, ' ')}#{second}"
           else
             "#{self[0..-2].join(connector)}#{last_connector}#{last}"
           end
         end
 
         def in_groups_of(n, fill_with = nil)
-          arr = dup
+          arr                        = dup
           if fill_with && (remainder = arr.size % n) > 0
             arr.concat(Array.new(n - remainder, fill_with))
           end
@@ -424,9 +385,9 @@ module Devex
 
         def in_groups(n, fill_with = nil)
           division = size.div(n)
-          modulo = size % n
-          groups = []
-          start = 0
+          modulo   = size % n
+          groups   = []
+          start    = 0
 
           n.times do |i|
             length = division + (modulo > 0 && modulo > i ? 1 : 0)
@@ -438,26 +399,42 @@ module Devex
           groups
         end
 
-        def extract_options!
-          last.is_a?(Hash) ? pop : {}
-        end
+        def extract_options! = last.is_a?(Hash) ? pop : {}
 
         def deep_dup
-          map { |e| e.respond_to?(:deep_dup) ? e.deep_dup : e.dup rescue e }
+          map do |e|
+            e.respond_to?(:deep_dup) ? e.deep_dup : e.dup
+          rescue StandardError
+            e
+          end
         end
       end
 
       module HashMethods
         def deep_dup
           each_with_object({}) do |(k, v), h|
-            h[k.respond_to?(:deep_dup) ? k.deep_dup : (k.dup rescue k)] =
-              v.respond_to?(:deep_dup) ? v.deep_dup : (v.dup rescue v)
+            h[if k.respond_to?(:deep_dup)
+                k.deep_dup
+              else
+                begin
+                  k.dup
+                rescue StandardError
+                  k
+                end
+              end] =
+              if v.respond_to?(:deep_dup)
+                v.deep_dup
+              else
+                begin
+                  v.dup
+                rescue StandardError
+                  v
+                end
+              end
           end
         end
 
-        def deep_merge(other, &block)
-          dup.deep_merge!(other, &block)
-        end
+        def deep_merge(other, &) = dup.deep_merge!(other, &)
 
         def deep_merge!(other, &block)
           other.each do |k, v|
@@ -472,13 +449,9 @@ module Devex
           self
         end
 
-        def deep_stringify_keys
-          transform_keys_recursive(&:to_s)
-        end
+        def deep_stringify_keys = transform_keys_recursive(&:to_s)
 
-        def deep_symbolize_keys
-          transform_keys_recursive { |k| k.respond_to?(:to_sym) ? k.to_sym : k }
-        end
+        def deep_symbolize_keys = transform_keys_recursive { |k| k.respond_to?(:to_sym) ? k.to_sym : k }
 
         def assert_valid_keys(*valid_keys)
           valid_keys = valid_keys.flatten
@@ -492,13 +465,13 @@ module Devex
 
         def stable_compact
           compact
-            .transform_values { |v|
+            .transform_values do |v|
               case v
               when Hash then v.stable_compact
               when Array then v.map { |e| e.respond_to?(:stable_compact) ? e.stable_compact : e }
               else v
               end
-            }
+            end
             .sort_by { |k, _| k.to_s }
             .to_h
         end
@@ -533,9 +506,7 @@ module Devex
           end
         end
 
-        def ordinalize
-          "#{self}#{ordinal}"
-        end
+        def ordinalize = "#{self}#{ordinal}"
       end
 
       # ─────────────────────────────────────────────────────────────

@@ -56,16 +56,16 @@ module Devex
         stderr: nil,
         options: {}
       )
-        @pid = pid
-        @command = Array(command)
-        @name = name
-        @stdin = stdin
-        @stdout = stdout
-        @stderr = stderr
-        @options = options
+        @pid        = pid
+        @command    = Array(command)
+        @name       = name
+        @stdin      = stdin
+        @stdout     = stdout
+        @stderr     = stderr
+        @options    = options
         @started_at = Time.now
-        @result = nil
-        @mutex = Mutex.new
+        @result     = nil
+        @mutex      = Mutex.new
       end
 
       # ─────────────────────────────────────────────────────────────
@@ -86,14 +86,10 @@ module Devex
       alias running? executing?
 
       # @return [Boolean] true if process has finished
-      def finished?
-        !executing?
-      end
+      def finished? = !executing?
 
       # @return [Float] Seconds since process started
-      def elapsed
-        Time.now - @started_at
-      end
+      def elapsed = Time.now - @started_at
 
       # ─────────────────────────────────────────────────────────────
       # Signals
@@ -164,9 +160,9 @@ module Devex
         @mutex.synchronize do
           @result = Result.from_status(
             status,
-            command: @command,
+            command:  @command,
             duration: duration,
-            options: @options
+            options:  @options
           )
         end
       end
@@ -193,16 +189,12 @@ module Devex
       # Read all available stdout.
       #
       # @return [String, nil] Stdout content or nil if no pipe
-      def read_stdout
-        @stdout&.read
-      end
+      def read_stdout = @stdout&.read
 
       # Read all available stderr.
       #
       # @return [String, nil] Stderr content or nil if no pipe
-      def read_stderr
-        @stderr&.read
-      end
+      def read_stderr = @stderr&.read
 
       # ─────────────────────────────────────────────────────────────
       # Inspection
@@ -222,8 +214,8 @@ module Devex
         parts << "name=#{name.inspect}" if name
         parts << "command=#{command.inspect}"
         parts << "pid=#{pid}"
-        parts << "elapsed=#{"%.2f" % elapsed}s"
-        parts << "status=#{@result ? "finished" : "running"}"
+        parts << "elapsed=#{'%.2f' % elapsed}s"
+        parts << "status=#{@result ? 'finished' : 'running'}"
         parts << ">"
         parts.join(" ")
       end

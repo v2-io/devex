@@ -30,47 +30,38 @@ module Devex
     class << self
       # Where the user actually ran `dx`
       # Captured once at startup, never changes
-      def invoked_dir
-        @invoked_dir ||= Path.pwd
-      end
+      def invoked_dir = @invoked_dir ||= Path.pwd
 
       # Effective start directory (invoked_dir unless overridden)
       # Used as starting point for project discovery
-      def dest_dir
-        @dest_dir ||= invoked_dir
-      end
+      def dest_dir = @dest_dir ||= invoked_dir
 
       # Override dest_dir (called when --dx-from-dir is used)
       # Must be called early, before project_dir is accessed
       def dest_dir=(path)
         raise "Cannot change dest_dir after project_dir is computed" if @project_dir
+
         @dest_dir = Path[path]
       end
 
       # Discovered project root directory
       # Searched upward from dest_dir
-      def project_dir
-        @project_dir ||= discover_project_root
-      end
+      def project_dir = @project_dir ||= discover_project_root
 
       # Devex gem installation directory
       # Contains templates, builtins, etc.
-      def dx_src_dir
-        @dx_src_dir ||= Path[File.expand_path("../..", __dir__)]
-      end
+      def dx_src_dir = @dx_src_dir ||= Path[File.expand_path("../..", __dir__)]
 
       # Reset all cached values (for testing)
       def reset!
         @invoked_dir = nil
-        @dest_dir = nil
+        @dest_dir    = nil
         @project_dir = nil
-        @dx_src_dir = nil
+        @dx_src_dir  = nil
       end
 
       # Check if we're inside a project
-      def in_project?
-        !!@project_dir || discover_project_root(raise_on_missing: false)
-      end
+      def in_project? = !!@project_dir || discover_project_root(raise_on_missing: false)
 
       private
 
@@ -102,7 +93,7 @@ module Devex
           ERROR: Not inside a dx project
 
             Searched from: #{dest_dir}
-            Looked for: #{PROJECT_MARKERS.join(", ")}
+            Looked for: #{PROJECT_MARKERS.join(', ')}
 
             To create a new project:
               dx init
@@ -114,11 +105,9 @@ module Devex
         ERR
 
         # Use Devex.fail! if available, otherwise raise
-        if Devex.respond_to?(:fail!)
-          Devex.fail!(message, exit_code: 78)
-        else
-          raise message
-        end
+        raise message unless Devex.respond_to?(:fail!)
+
+        Devex.fail!(message, exit_code: 78)
       end
     end
 

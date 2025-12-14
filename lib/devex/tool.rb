@@ -3,21 +3,20 @@
 module Devex
   # Represents a CLI tool/command with its metadata, flags, args, and subtools
   class Tool
-    attr_reader :name, :parent, :subtools
-    attr_accessor :desc, :long_desc, :run_block
-    attr_accessor :source_code, :source_file, :source_proc
+    attr_accessor :builtin, :desc, :long_desc, :run_block, :source_code, :source_file, :source_proc
+    attr_reader :name, :parent, :subtools, :flags, :args, :mixins
 
     def initialize(name, parent: nil)
-      @name = name
-      @parent = parent
-      @desc = nil
-      @long_desc = nil
-      @flags = []
-      @args = []
-      @subtools = {}
-      @run_block = nil
-      @mixins = []
-      @builtin = nil # reference to builtin tool if this is an override
+      @name        = name
+      @parent      = parent
+      @desc        = nil
+      @long_desc   = nil
+      @flags       = []
+      @args        = []
+      @subtools    = {}
+      @run_block   = nil
+      @mixins      = []
+      @builtin     = nil # reference to builtin tool if this is an override
       @source_code = nil
       @source_file = nil
       @source_proc = nil
@@ -25,58 +24,41 @@ module Devex
 
     # Full command path (e.g., ["version", "bump"])
     def full_path
-      parent ? parent.full_path + [name] : (name ? [name] : [])
+      if parent
+        parent.full_path + [name]
+      else
+        (name ? [name] : [])
+      end
     end
 
     # Full command string (e.g., "version bump")
-    def full_name
-      full_path.join(" ")
-    end
+    def full_name = full_path.join(" ")
 
     # Define a flag
     # Examples:
     #   flag :verbose, "-v", "--verbose", desc: "Enable verbose output"
     #   flag :file, "-f FILE", "--file=FILE", desc: "Input file"
-    def flag(name, *specs, desc: nil, default: nil)
-      @flags << Flag.new(name, specs, desc: desc, default: default)
-    end
+    def flag(name, *specs, desc: nil, default: nil) = @flags << Flag.new(name, specs, desc: desc, default: default)
 
     # Define a required positional argument
-    def required_arg(name, desc: nil)
-      @args << Arg.new(name, required: true, desc: desc)
-    end
+    def required_arg(name, desc: nil) = @args << Arg.new(name, required: true, desc: desc)
 
     # Define an optional positional argument
-    def optional_arg(name, desc: nil, default: nil)
-      @args << Arg.new(name, required: false, desc: desc, default: default)
-    end
+    def optional_arg(name, desc: nil, default: nil) = @args << Arg.new(name, required: false, desc: desc, default: default)
 
     # Define remaining args (variadic)
-    def remaining_args(name, desc: nil)
-      @args << Arg.new(name, required: false, desc: desc, remaining: true)
-    end
+    def remaining_args(name, desc: nil) = @args << Arg.new(name, required: false, desc: desc, remaining: true)
 
     # Add a subtool
-    def add_subtool(tool)
-      @subtools[tool.name] = tool
-    end
+    def add_subtool(tool) = @subtools[tool.name] = tool
 
     # Find a subtool by name
-    def subtool(name)
-      @subtools[name]
-    end
+    def subtool(name) = @subtools[name]
 
     # Include a mixin by name
-    def include_mixin(name)
-      @mixins << name
-    end
+    def include_mixin(name) = @mixins << name
 
     # Set builtin reference for override support
-    def builtin=(tool)
-      @builtin = tool
-    end
-
-    attr_reader :builtin, :flags, :args, :mixins
 
     # Parse arguments and execute the tool
     def execute(argv, cli)
@@ -87,13 +69,11 @@ module Devex
 
       # Parse flags and args
       context = ExecutionContext.new(self, cli)
-      remaining = context.parse(argv)
+      context.parse(argv)
 
       # Check for required args
       @args.select(&:required).each do |arg|
-        unless context.options.key?(arg.name)
-          raise Error, "Missing required argument: #{arg.name}"
-        end
+        raise Error, "Missing required argument: #{arg.name}" unless context.options.key?(arg.name)
       end
 
       # Execute - re-evaluate source in context so `def run` has access to cli, options, etc.
@@ -132,17 +112,17 @@ module Devex
       lines = []
 
       # Usage line
-      cmd = [executable_name, *full_path].join(" ")
+      cmd         = [executable_name, *full_path].join(" ")
       usage_parts = [cmd]
       usage_parts << "[OPTIONS]" if @flags.any?
       @args.each do |arg|
-        if arg.remaining
-          usage_parts << "[#{arg.name.to_s.upcase}...]"
-        elsif arg.required
-          usage_parts << arg.name.to_s.upcase
-        else
-          usage_parts << "[#{arg.name.to_s.upcase}]"
-        end
+        usage_parts << if arg.remaining
+                         "[#{arg.name.to_s.upcase}...]"
+                       elsif arg.required
+                         arg.name.to_s.upcase
+                       else
+                         "[#{arg.name.to_s.upcase}]"
+                       end
       end
       usage_parts << "COMMAND" if @subtools.any?
 
@@ -205,16 +185,14 @@ module Devex
     attr_reader :name, :specs, :desc, :default
 
     def initialize(name, specs, desc: nil, default: nil)
-      @name = name
-      @specs = specs
-      @desc = desc
+      @name    = name
+      @specs   = specs
+      @desc    = desc
       @default = default
     end
 
     # Does this flag take an argument?
-    def takes_argument?
-      @specs.any? { |s| s.include?(" ") || s.include?("=") }
-    end
+    def takes_argument? = @specs.any? { |s| s.include?(" ") || s.include?("=") }
   end
 
   # Represents a positional argument definition
@@ -222,10 +200,10 @@ module Devex
     attr_reader :name, :required, :desc, :default, :remaining
 
     def initialize(name, required:, desc: nil, default: nil, remaining: false)
-      @name = name
-      @required = required
-      @desc = desc
-      @default = default
+      @name      = name
+      @required  = required
+      @desc      = desc
+      @default   = default
       @remaining = remaining
     end
   end
@@ -235,8 +213,8 @@ module Devex
     attr_reader :options, :cli
 
     def initialize(tool, cli)
-      @tool = tool
-      @cli = cli
+      @tool    = tool
+      @cli     = cli
       @options = {}
 
       # Set defaults
@@ -251,9 +229,6 @@ module Devex
     # Parse argv into options, return unparsed remainder
     def parse(argv)
       require "optparse"
-
-      remaining_args = []
-      positional_index = 0
 
       parser = OptionParser.new do |opts|
         tool.flags.each do |flag|
@@ -282,14 +257,14 @@ module Devex
     end
 
     # DSL methods - no-ops during execution (already captured during load)
-    def desc(_text) = nil
-    def long_desc(_text) = nil
-    def flag(_name, *_specs, **_kwargs) = nil
-    def required_arg(_name, **_kwargs) = nil
-    def optional_arg(_name, **_kwargs) = nil
+    def desc(_text)                      = nil
+    def long_desc(_text)                 = nil
+    def flag(_name, *_specs, **_kwargs)  = nil
+    def required_arg(_name, **_kwargs)   = nil
+    def optional_arg(_name, **_kwargs)   = nil
     def remaining_args(_name, **_kwargs) = nil
-    def include(_name) = nil
-    def to_run(&_block) = nil
+    def include(_name)                   = nil
+    def to_run(&)                  = nil
 
     # We need special handling because `tool` is both an attr_reader
     # and a DSL method. Override the reader to handle both cases.
@@ -304,7 +279,7 @@ module Devex
     end
 
     # Access options as methods
-    def method_missing(name, *args, &block)
+    def method_missing(name, *args, &)
       if @options.key?(name)
         @options[name]
       else
@@ -312,45 +287,29 @@ module Devex
       end
     end
 
-    def respond_to_missing?(name, include_private = false)
-      @options.key?(name) || super
-    end
+    def respond_to_missing?(name, include_private = false) = @options.key?(name) || super
 
     # Access to builtin if this is an override
-    def builtin
-      tool.builtin ? ExecutionContext.new(tool.builtin, cli) : nil
-    end
+    def builtin = tool.builtin ? ExecutionContext.new(tool.builtin, cli) : nil
 
     # Run another tool by path
-    def run_tool(*path)
-      cli.run([*path.map(&:to_s)])
-    end
+    def run_tool(*path) = cli.run([*path.map(&:to_s)])
 
     # Exit with code
-    def exit(code = 0)
-      Kernel.exit(code)
-    end
+    def exit(code = 0) = Kernel.exit(code)
 
     # --- Global options access ---
 
     # Access CLI's global options
-    def global_options
-      cli.global_options
-    end
+    def global_options = cli.global_options
 
     # Is verbose mode enabled? Returns verbosity level (0 = off, 1+ = on)
-    def verbose
-      global_options[:verbose]
-    end
+    def verbose = global_options[:verbose]
 
-    def verbose?
-      verbose > 0
-    end
+    def verbose? = verbose > 0
 
     # Is quiet mode enabled?
-    def quiet?
-      global_options[:quiet]
-    end
+    def quiet? = global_options[:quiet]
 
     # Get the effective output format
     # Tool's --format flag takes precedence, then global --format, then context-based default

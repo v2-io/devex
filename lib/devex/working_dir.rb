@@ -26,17 +26,13 @@ module Devex
 
     # Thread-local working directory stack
     # Each entry is an immutable Path
-    @stack = []
+    @stack       = []
     @stack_mutex = Mutex.new
 
     class << self
       # Get current working directory
       # Defaults to project_dir if no context has been pushed
-      def current
-        @stack_mutex.synchronize do
-          @stack.last || Dirs.project_dir
-        end
-      end
+      def current = @stack_mutex.synchronize { @stack.last || Dirs.project_dir }
 
       # Execute a block with a different working directory
       # The working directory is restored after the block completes.
@@ -62,12 +58,9 @@ module Devex
       #
       def within(subdir)
         new_wd = case subdir
-                 when Path
-                   subdir.absolute? ? subdir : current / subdir
-                 when Pathname
-                   subdir.absolute? ? Path.new(subdir) : current / subdir.to_s
-                 when String
-                   subdir.start_with?("/") ? Path[subdir] : current / subdir
+                 when Path     then subdir.absolute? ? subdir : current / subdir
+                 when Pathname then subdir.absolute? ? Path.new(subdir) : current / subdir.to_s
+                 when String   then subdir.start_with?("/") ? Path[subdir] : current / subdir
                  else
                    raise ArgumentError, "Expected String or Path, got #{subdir.class}"
                  end
@@ -79,42 +72,28 @@ module Devex
       end
 
       # Reset the working directory stack (for testing)
-      def reset!
-        @stack_mutex.synchronize { @stack.clear }
-      end
+      def reset! = @stack_mutex.synchronize { @stack.clear }
 
       # Get the full stack (for debugging)
-      def stack
-        @stack_mutex.synchronize { @stack.dup }
-      end
+      def stack = @stack_mutex.synchronize { @stack.dup }
 
       # Get the depth of the current context
-      def depth
-        @stack_mutex.synchronize { @stack.size }
-      end
+      def depth = @stack_mutex.synchronize { @stack.size }
 
       private
 
-      def push(path)
-        @stack_mutex.synchronize { @stack.push(path.freeze) }
-      end
+      def push(path) = @stack_mutex.synchronize { @stack.push(path.freeze) }
 
-      def pop
-        @stack_mutex.synchronize { @stack.pop }
-      end
+      def pop = @stack_mutex.synchronize { @stack.pop }
     end
   end
 
   # Mixin module for tools that need working directory support
   module WorkingDirMixin
     # Get current working directory
-    def working_dir
-      WorkingDir.current
-    end
+    def working_dir = WorkingDir.current
 
     # Execute block in a different working directory
-    def within(subdir, &block)
-      WorkingDir.within(subdir, &block)
-    end
+    def within(subdir, &) = WorkingDir.within(subdir, &)
   end
 end
