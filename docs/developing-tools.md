@@ -17,6 +17,25 @@ end
 
 Run with: `dx hello`
 
+### Using Project Libraries
+
+Devex automatically adds your project's `lib/` directory to the load path. This means tools can `require` project code directly:
+
+```ruby
+# tools/deploy.rb
+require "myproject/config"   # loads lib/myproject/config.rb
+require "myproject/deploy"   # loads lib/myproject/deploy.rb
+
+desc "Deploy the application"
+
+def run
+  config = MyProject::Config.load
+  MyProject::Deploy.run(config)
+end
+```
+
+No `require_relative` needed - just use standard `require` with your library's namespace.
+
 ---
 
 ## Tool Definition DSL
@@ -35,12 +54,25 @@ DESC
 ### Flags (Options)
 
 ```ruby
-flag :verbose, "-v", "--verbose", desc: "Enable verbose output"
-flag :count, "-n COUNT", "--count=COUNT", desc: "Number of times"
-flag :format, "-f FORMAT", "--format=FORMAT", desc: "Output format"
+flag :dry_run, "-n", "--dry-run", desc: "Show what would happen"
+flag :count, "-c COUNT", "--count=COUNT", desc: "Number of times"
+flag :output, "-o FILE", "--output=FILE", desc: "Output file"
+flag :format, "--format=FMT", desc: "Output format", default: "text"
 ```
 
-Access in `run`: `verbose`, `count`, `format` (as methods) or `options[:verbose]`
+Access in `run`: `dry_run`, `count`, `output`, `format` (as methods) or `options[:dry_run]`
+
+**Flag options:**
+- `desc:` - Description shown in help
+- `default:` - Default value for the flag. Boolean flags without values default to `false`. Flags with arguments default to `nil` unless `default:` is specified.
+
+**Reserved flags:** The following flags are reserved for global use and cannot be used by tools:
+- `-v`, `--verbose` - Use `verbose?` to check global verbose level
+- `-f`, `--format` - Use `global_options[:format]`
+- `-q`, `--quiet` - Use `global_options[:quiet]`
+- `--no-color`, `--color` - Color is handled automatically
+
+Tools that define conflicting flags will fail with an error when invoked.
 
 ### Positional Arguments
 
@@ -86,15 +118,17 @@ The `Devex::Exec` module provides methods for running external commands with aut
 
 | Method | Purpose | stdout | Returns |
 |--------|---------|--------|---------|
-| `run(*cmd)` | Run command, wait | streams | `Result` |
-| `run?(*cmd)` | Test if command succeeds | silent | `bool` |
-| `capture(*cmd)` | Run and capture output | captured | `Result` |
-| `spawn(*cmd)` | Run in background | configurable | `Controller` |
-| `exec!(*cmd)` | Replace this process | N/A | never returns |
+| `cmd(*args)` | Run command, wait | streams | `Result` |
+| `cmd?(*args)` | Test if command succeeds | silent | `bool` |
+| `capture(*args)` | Run and capture output | captured | `Result` |
+| `spawn(*args)` | Run in background | configurable | `Controller` |
+| `exec!(*args)` | Replace this process | N/A | never returns |
 | `shell(str)` | Run via shell | streams | `Result` |
 | `shell?(str)` | Test shell command | silent | `bool` |
 | `ruby(*args)` | Run Ruby subprocess | streams | `Result` |
 | `tool(name, *args)` | Run another dx tool | streams | `Result` |
+
+**Note:** `cmd` and `cmd?` are aliases for `run` and `run?`. Use `cmd`/`cmd?` inside tools to avoid shadowing the `def run` entry point.
 
 ### Basic Usage
 
@@ -103,36 +137,39 @@ The `Devex::Exec` module provides methods for running external commands with aut
 include Devex::Exec
 
 def run
-  # Run a command, streaming output
-  run "bundle", "install"
+  # Use `cmd` instead of `run` to avoid collision with `def run`
+  cmd "bundle", "install"
 
   # Check if command succeeded
-  result = run "make", "test"
+  result = cmd "make", "test"
   if result.failed?
     Output.error "Tests failed"
     exit result.exit_code
   end
 
   # Exit immediately on failure
-  run("bundle", "install").exit_on_failure!
+  cmd("bundle", "install").exit_on_failure!
 
   # Chain commands (short-circuit on failure)
-  run("lint").then { run("test") }.then { run("build") }.exit_on_failure!
+  cmd("lint").then { cmd("test") }.then { cmd("build") }.exit_on_failure!
 end
 ```
 
-### `run` - Run Command
+**Note:** Use `cmd` instead of `run` when including `Devex::Exec` in tools. The `def run` entry point shadows `Devex::Exec.run`, so `cmd` is provided as an alias to avoid this collision.
+
+### `cmd` / `run` - Run Command
 
 The workhorse method. Runs a command, streams output, waits for completion.
+Use `cmd` inside tools (alias for `run`) to avoid shadowing `def run`.
 
 ```ruby
-run "bundle", "install"
+cmd "bundle", "install"
 
 # With options
-run "make", "test", env: { CI: "1" }, chdir: "subproject/"
+cmd "make", "test", env: { CI: "1" }, chdir: "subproject/"
 
 # With timeout (seconds)
-run "slow_task", timeout: 30
+cmd "slow_task", timeout: 30
 ```
 
 **Behavior:**
@@ -141,16 +178,17 @@ run "slow_task", timeout: 30
 - Returns `Result` object
 - Never raises on non-zero exit
 
-### `run?` - Test Command Success
+### `cmd?` / `run?` - Test Command Success
 
 Silent execution, returns boolean. Perfect for conditionals.
+Use `cmd?` inside tools (alias for `run?`).
 
 ```ruby
-if run? "which", "rubocop"
-  run "rubocop", "--autocorrect"
+if cmd? "which", "rubocop"
+  cmd "rubocop", "--autocorrect"
 end
 
-unless run? "git", "diff", "--quiet"
+unless cmd? "git", "diff", "--quiet"
   Output.warn "Uncommitted changes"
 end
 ```
@@ -897,9 +935,9 @@ def run
     end
   end
 
-  # Run linter
-  if run? "which", "rubocop"
-    result = run "rubocop", *(fix ? ["--autocorrect"] : [])
+  # Run linter (use cmd/cmd? inside def run to avoid shadowing)
+  if cmd? "which", "rubocop"
+    result = cmd "rubocop", *(fix ? ["--autocorrect"] : [])
     status = result.success? ? "passed" : "failed"
     results[:checks] << { name: "lint", status: status }
     result.success? ? results[:passed] += 1 : results[:failed] += 1

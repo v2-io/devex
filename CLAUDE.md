@@ -13,7 +13,7 @@ Devex is a **lightweight Ruby CLI framework** providing a unified `dx` command f
 2. **Project templating** - `dx config` for setting up new projects (planned)
 3. **Conventions reference** - Embody best practices for CLI design and agent interaction
 
-## Current State (v0.1.0)
+## Current State (v0.3.1)
 
 ### What Works
 
@@ -59,15 +59,18 @@ Devex is a **lightweight Ruby CLI framework** providing a unified `dx` command f
 - `dx version` - Show project or devex version
 - `dx version bump <major|minor|patch>` - Semantic version bumping
 - `dx version set <version>` - Set explicit version
+- `dx test` - Auto-detect and run test suite (minitest/RSpec)
+- `dx lint` - Run linter (RuboCop/StandardRB) with `--fix`, `--diff` options
+- `dx format` - Auto-format code (alias for `dx lint --fix`)
+- `dx gem build` - Build the gem
+- `dx gem install` - Build and install locally
+- `dx gem clean` - Remove built gem files
 
 ### What's Missing
 
 **Built-in tasks to implement:**
-- `dx test` - Auto-detect and run test suite
-- `dx lint` / `dx format` - RuboCop/StandardRB integration
 - `dx types` - Steep/RBS type checking
 - `dx pre-commit` - Orchestrated checks
-- `dx gem` - Build/install gem
 - `dx config` - Project setup wizard/questionnaire
 
 **Advanced features (see OUTLINE.md):**
@@ -138,7 +141,11 @@ lib/devex/
 └── builtins/
     ├── .index.rb       # Root tool config
     ├── debug.rb        # Context debugging (hidden)
-    └── version.rb      # Version management
+    ├── version.rb      # Version management
+    ├── test.rb         # Test runner (minitest/RSpec)
+    ├── lint.rb         # Linter (RuboCop/StandardRB)
+    ├── format.rb       # Code formatter
+    └── gem.rb          # Gem packaging (build/install/clean)
 
 docs/
 ├── developing-tools.md # Tool development guide (AUTHORITATIVE)
@@ -194,7 +201,7 @@ See `lib/devex/context.rb` for full logic.
 ## Testing
 
 ```bash
-bundle exec rake test  # Run all tests (399 tests currently)
+bundle exec rake test  # Run all tests (438 tests currently)
 ```
 
 Tests use:
@@ -292,8 +299,8 @@ Note: Only colors are stripped with `--no-color`, not symbols. Basic unicode lik
 ## Common Tasks for Future Sessions
 
 1. **Add a new built-in task**: See [docs/developing-tools.md](docs/developing-tools.md) for patterns
-2. **Implement dx test**: Auto-detect test framework, run with appropriate runner
-3. **Implement dx lint**: RuboCop/StandardRB integration
+2. **Implement dx types**: Steep/RBS type checking integration
+3. **Implement dx pre-commit**: Orchestrated pre-commit checks
 4. **Implement dx config**: Interactive questionnaire using tty-prompt
 5. **Hide dx debug from help**: Currently visible, should be hidden
 

@@ -74,7 +74,12 @@ module Devex
     # @example Chain with early exit
     #   run("lint").then { run("test") }.exit_on_failure!
     #
+    # @note Use `cmd` alias in tools to avoid conflict with `def run` entry point
+    #
     def run(*cmd, **) = execute_command(cmd, **)
+
+    # Alias for `run` - use this in tools to avoid conflict with `def run`
+    alias cmd run
 
     # Test if a command succeeds (exit code 0).
     #
@@ -89,6 +94,9 @@ module Devex
     #   end
     #
     def run?(*cmd, **) = execute_command(cmd, **, out: :null, err: :null).success?
+
+    # Alias for `run?` - use this in tools to avoid conflict with `def run`
+    alias cmd? run?
 
     # Run a command and capture its output.
     #

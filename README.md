@@ -45,22 +45,43 @@ dx version --format=json
 Create a `tools/` directory in your project root with Ruby files:
 
 ```ruby
-# tools/deploy.rb
-desc "Deploy to production"
-flag :dry_run, "-n", "--dry-run", desc: "Show what would be deployed"
+# tools/build.rb
+desc "Build and test the project"
+
+long_desc <<~DESC
+  Runs the full build pipeline: install dependencies, run tests,
+  and optionally lint the code.
+DESC
+
+flag :skip_lint, "-s", "--skip-lint", desc: "Skip linting step"
+flag :coverage, "-c", "--coverage", desc: "Run with code coverage"
 
 include Devex::Exec
 
 def run
-  if dry_run
-    $stdout.puts "Would deploy..."
-  else
-    run("./scripts/deploy.sh").exit_on_failure!
+  # Use `cmd` instead of `run` to avoid conflict with `def run`
+  cmd("bundle", "install").exit_on_failure!
+
+  # Access flags as methods (boolean flags default to false)
+  env = coverage ? { "COVERAGE" => "1" } : {}
+  cmd("bundle", "exec", "rake", "test", env: env).exit_on_failure!
+
+  unless skip_lint
+    cmd("bundle", "exec", "rubocop").exit_on_failure!
   end
+
+  # Check global verbose flag
+  puts "Build complete!" if verbose?
 end
 ```
 
-Then run: `dx deploy` or `dx deploy --dry-run`
+Then run:
+```bash
+dx build                    # Full build
+dx build --skip-lint        # Skip linting
+dx build --coverage         # With coverage
+dx -v build                 # Verbose output
+```
 
 ### Nested Tools
 
@@ -84,6 +105,105 @@ end
 ```
 
 Access as: `dx db migrate`, `dx db seed`
+
+## Command Execution
+
+Tools have access to smart command execution that automatically handles your environment.
+Use `cmd` (not `run`) inside tools to avoid shadowing the `def run` entry point:
+
+```ruby
+# tools/deploy.rb
+desc "Deploy the application"
+
+flag :skip_tests, "--skip-tests", desc: "Skip test suite"
+flag :dry_run, "-n", "--dry-run", desc: "Show what would be done"
+
+include Devex::Exec
+
+def run
+  # ─── Basic execution with exit_on_failure! ───
+  cmd("bundle", "install").exit_on_failure!
+
+  # ─── Boolean check: cmd? returns true/false ───
+  unless skip_tests || cmd?("which", "rspec")
+    cmd("rake", "test").exit_on_failure!
+  end
+
+  # ─── Capture output into result object ───
+  result = capture("git", "rev-parse", "--short", "HEAD")
+  commit = result.stdout.strip
+  puts "Deploying commit #{commit}..."
+
+  # ─── Chain sequential operations with .then ───
+  cmd("docker", "build", "-t", "myapp:#{commit}", ".")
+    .then { cmd("docker", "push", "myapp:#{commit}") }
+    .exit_on_failure!
+
+  # ─── Transform captured output with .map ───
+  tag = capture("git", "describe", "--tags", "--abbrev=0")
+          .map { |stdout| stdout.strip }
+
+  # ─── Result object has rich info ───
+  result = cmd("kubectl", "apply", "-f", "k8s/")
+  if result.failed?
+    $stderr.puts "Deploy failed (exit #{result.exit_code})"
+    $stderr.puts result.stderr if result.stderr
+    exit 1
+  end
+
+  puts "Deployed #{tag || commit} successfully!" if verbose?
+end
+```
+
+### Execution Methods
+
+| Method | Purpose | Returns |
+|--------|---------|---------|
+| `cmd(*args)` | Run command, stream output | `Result` |
+| `cmd?(*args)` | Test if command succeeds | `Boolean` |
+| `capture(*args)` | Run command, capture output | `Result` with `.stdout`, `.stderr` |
+| `shell(string)` | Run shell command (pipes, globs) | `Result` |
+| `shell?(string)` | Test if shell command succeeds | `Boolean` |
+| `spawn(*args)` | Start background process | `Controller` |
+
+### Result Object
+
+```ruby
+result = cmd("make", "test")
+
+result.success?      # => true if exit code is 0
+result.failed?       # => true if non-zero exit
+result.exit_code     # => Integer exit code
+result.stdout        # => captured stdout (if using capture)
+result.stderr        # => captured stderr
+result.stdout_lines  # => stdout split into lines
+result.duration      # => execution time in seconds
+
+# Chaining
+result.exit_on_failure!           # Exit process if failed
+result.then { cmd("next") }       # Chain if successful
+result.map { |out| out.strip }    # Transform stdout
+```
+
+### Environment Wrappers
+
+Commands are automatically wrapped based on your project:
+
+| Wrapper | When Applied |
+|---------|--------------|
+| `mise exec --` | Auto if `.mise.toml` or `.tool-versions` exists |
+| `bundle exec` | Auto if `Gemfile` exists and command looks like a gem |
+| `dotenv` | Explicit opt-in only (`dotenv: true`) |
+
+Control wrappers explicitly:
+
+```ruby
+cmd "rspec"                      # auto-detect mise + bundle
+cmd "rspec", mise: false         # skip mise wrapping
+cmd "rspec", bundle: false       # skip bundle exec
+cmd "echo", "hi", raw: true      # skip all wrappers
+cmd "rails", "s", dotenv: true   # enable dotenv loading
+```
 
 ## Configuration
 
@@ -128,11 +248,23 @@ dx --dx-terminal version        # Force terminal detection
 
 ## Built-in Commands
 
+**Testing & Quality**
+- `dx test` - Run tests (auto-detects minitest/RSpec)
+- `dx lint` - Run linter (auto-detects RuboCop/StandardRB)
+- `dx lint --fix` - Auto-fix linter issues
+- `dx format` - Auto-format code (alias for `dx lint --fix`)
+
+**Version Management**
 - `dx version` - Show project version
 - `dx version bump <major|minor|patch>` - Bump semantic version
 - `dx version set <version>` - Set explicit version
 
-More built-ins planned: `test`, `lint`, `format`, `types`, `pre-commit`, `gem`
+**Gem Packaging**
+- `dx gem build` - Build the gem
+- `dx gem install` - Build and install locally
+- `dx gem clean` - Remove built gem files
+
+More built-ins planned: `types`, `pre-commit`, `init`
 
 ## Development
 
@@ -145,8 +277,7 @@ bundle exec exe/dx --help
 ## Documentation
 
 - **[Developing Tools](docs/developing-tools.md)** - How to create tools, available interfaces, best practices
-- **[CLAUDE.md](CLAUDE.md)** - Architecture overview for contributors
-- **[OUTLINE.md](OUTLINE.md)** - Feature comparison with toys-core and Rake
+- **[CHANGELOG](CHANGELOG.md)** - Version history and release notes
 
 ## License
 

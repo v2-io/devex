@@ -6,6 +6,16 @@ module Devex
     attr_accessor :builtin, :desc, :long_desc, :run_block, :source_code, :source_file, :source_proc
     attr_reader :name, :parent, :subtools, :flags, :args, :mixins
 
+    # Global flag specs that tools cannot override
+    # These are handled by CLI before tool flag parsing
+    RESERVED_FLAG_SPECS = %w[
+      -f --format
+      -v --verbose --no-verbose
+      -q --quiet --no-quiet
+      --color --no-color
+      --dx-version --dx-from-dir
+    ].freeze
+
     def initialize(name, parent: nil)
       @name        = name
       @parent      = parent
@@ -40,6 +50,29 @@ module Devex
     #   flag :file, "-f FILE", "--file=FILE", desc: "Input file"
     def flag(name, *specs, desc: nil, default: nil) = @flags << Flag.new(name, specs, desc: desc, default: default)
 
+    # Check that flag specs don't conflict with global flags (called at execute time)
+    def validate_flags!
+      @flags.each do |flag|
+        flag.specs.each do |spec|
+          # Extract the flag part (before space or =)
+          flag_part = spec.split(/[\s=]/).first
+          if RESERVED_FLAG_SPECS.include?(flag_part)
+            raise Error, <<~ERR.chomp
+              Tool '#{full_name}': flag '#{flag_part}' conflicts with global flag
+
+              Global flags like #{flag_part} are handled before tool execution.
+              Your tool can access the global value via:
+                verbose?                 # for -v/--verbose
+                global_options[:format]  # for -f/--format
+                global_options[:quiet]   # for -q/--quiet
+
+              To fix: remove this flag definition or use a different flag name.
+            ERR
+          end
+        end
+      end
+    end
+
     # Define a required positional argument
     def required_arg(name, desc: nil) = @args << Arg.new(name, required: true, desc: desc)
 
@@ -66,6 +99,9 @@ module Devex
       if argv.any? && (sub = subtool(argv.first))
         return sub.execute(argv[1..], cli)
       end
+
+      # Validate flags don't conflict with global flags
+      validate_flags!
 
       # Parse flags and args
       context = ExecutionContext.new(self, cli)
@@ -217,9 +253,13 @@ module Devex
       @cli     = cli
       @options = {}
 
-      # Set defaults
+      # Set defaults for flags
       tool.flags.each do |flag|
-        @options[flag.name] = flag.default unless flag.default.nil?
+        @options[flag.name] = if !flag.default.nil?
+                                flag.default
+                              elsif !flag.takes_argument?
+                                false  # Boolean flags default to false
+                              end
       end
       tool.args.each do |arg|
         @options[arg.name] = arg.default unless arg.default.nil?

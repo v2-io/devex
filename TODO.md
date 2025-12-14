@@ -148,3 +148,92 @@ TITLE_CASE_MINOR = %w[
 ].freeze
 ```
 Note: "is", "it", "if" are NOT minor words (verb, pronoun, conjunction respectively).
+
+---
+
+## Built-in Tools Priority List
+
+### Priority 1: Daily Development (implement first)
+
+| Tool | Purpose | Detection | Notes |
+|------|---------|-----------|-------|
+| `dx test` | Run test suite | minitest, rspec, test-unit | Most commonly needed |
+| `dx lint` | Run linter | rubocop, standardrb | Code quality |
+
+**dx test implementation:**
+- Detect test framework: `test/` → minitest, `spec/` → rspec
+- Detect runner: `Rakefile` with test task, or direct
+- Options: `--watch`, `--fail-fast`, `--coverage`
+- Pass-through args after `--`
+
+**dx lint implementation:**
+- Detect linter: `.rubocop.yml` → rubocop, `.standard.yml` → standardrb
+- Options: `--fix` (autocorrect), `--diff` (changed files only)
+
+### Priority 2: Development Workflow
+
+| Tool | Purpose | Detection | Notes |
+|------|---------|-----------|-------|
+| `dx format` | Auto-fix formatting | rubocop, standardrb | May alias to `dx lint --fix` |
+| `dx pre-commit` | Pre-commit checks | - | Orchestrates lint + test + types |
+| `dx types` | Type checking | steep, sorbet | RBS/RBI support |
+
+**dx pre-commit implementation:**
+- Run in order: `lint`, `types` (if configured), `test`
+- Fail fast by default
+- Options: `--all` (ignore changed-files optimization)
+
+### Priority 3: Project Management
+
+| Tool | Purpose | Detection | Notes |
+|------|---------|-----------|-------|
+| `dx gem build` | Build gem | `.gemspec` | Package for release |
+| `dx gem install` | Install locally | `.gemspec` | For testing |
+| `dx init` | Initialize devex | - | Create `.dx.yml`, `tools/` |
+
+**dx init implementation:**
+- Create `.dx.yml` with sensible defaults
+- Create `tools/` directory
+- Optionally create sample tool
+
+### Priority 4: Nice to Have
+
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| `dx docs` | Generate documentation | yard, rdoc |
+| `dx release` | Release workflow | bump version, tag, push |
+| `dx bench` | Run benchmarks | benchmark-ips |
+| `dx console` | Interactive REPL | irb/pry with project loaded |
+| `dx ci` | Full CI pipeline locally | Everything pre-commit does + more |
+
+---
+
+## Implementation Patterns for Built-ins
+
+### Framework Detection Pattern
+```ruby
+def detect_test_framework
+  return :rspec   if File.exist?("spec") || File.exist?(".rspec")
+  return :minitest if File.exist?("test")
+  nil
+end
+```
+
+### Runner Selection Pattern
+```ruby
+def run_tests(framework)
+  case framework
+  when :rspec   then run "rspec"
+  when :minitest then run "rake", "test"
+  end
+end
+```
+
+### Pass-through Args Pattern
+```ruby
+remaining_args :passthrough, desc: "Arguments passed to underlying tool"
+
+def run
+  run "rspec", *passthrough
+end
+```

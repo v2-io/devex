@@ -9,6 +9,9 @@ require_relative "devex/dsl"
 require_relative "devex/loader"
 require_relative "devex/cli"
 require_relative "devex/dirs"
+require_relative "devex/exec"
+require_relative "devex/project_paths"
+require_relative "devex/working_dir"
 
 module Devex
   class Error < StandardError; end

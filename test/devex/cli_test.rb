@@ -46,9 +46,27 @@ class CLITest < Minitest::Test
     assert_equal ["version"], argv
   end
 
+  def test_extract_no_verbose_resets
+    # First set verbose
+    @cli.send(:extract_global_flags, ["-v", "-v", "version"])
+    assert_equal 2, @cli.global_options[:verbose]
+
+    # Reset and use --no-verbose
+    @cli = Devex::CLI.new
+    argv, = @cli.send(:extract_global_flags, ["-v", "-v", "--no-verbose", "version"])
+    assert_equal 0, @cli.global_options[:verbose]
+    assert_equal ["version"], argv
+  end
+
   def test_extract_quiet_flag
     argv, = @cli.send(:extract_global_flags, ["-q", "version"])
     assert @cli.global_options[:quiet]
+    assert_equal ["version"], argv
+  end
+
+  def test_extract_no_quiet_unsets
+    argv, = @cli.send(:extract_global_flags, ["-q", "--no-quiet", "version"])
+    refute @cli.global_options[:quiet]
     assert_equal ["version"], argv
   end
 

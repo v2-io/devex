@@ -101,8 +101,24 @@ module Devex
     # Load project-specific tools
     def load_project_tools(project_root)
       @project_root = project_root
-      tools_dir     = Devex.tools_dir(project_root)
+
+      # Add project lib/ to load path so tools can `require` without `require_relative`
+      add_project_lib_to_load_path(project_root)
+
+      tools_dir = Devex.tools_dir(project_root)
       Loader.load_directory(tools_dir, @root_tool, @mixins) if tools_dir
+    end
+
+    # Add project's lib/ directory to $LOAD_PATH if it exists.
+    # This allows tools to use `require "myproject/foo"` instead of require_relative.
+    def add_project_lib_to_load_path(project_root)
+      return unless project_root
+
+      lib_dir = File.join(project_root, "lib")
+      return unless File.directory?(lib_dir)
+      return if $LOAD_PATH.include?(lib_dir)
+
+      $LOAD_PATH.unshift(lib_dir)
     end
 
     # Merge builtin tools (project tools take precedence)
@@ -157,9 +173,15 @@ module Devex
         when "-v", "--verbose"
           @global_options[:verbose] += 1
           consumed                  = true
+        when "--no-verbose"
+          @global_options[:verbose] = 0
+          consumed                  = true
         when "-q", "--quiet"
           @global_options[:quiet] = true
-          consumed = true
+          consumed                 = true
+        when "--no-quiet"
+          @global_options[:quiet] = false
+          consumed                 = true
         when "--no-color"
           Context.set_override(:color, false)
           consumed = true
