@@ -13,6 +13,39 @@ Devex is a **lightweight Ruby CLI framework** providing a unified `dx` command f
 2. **Project templating** - `dx config` for setting up new projects (planned)
 3. **Conventions reference** - Embody best practices for CLI design and agent interaction
 
+## Devex::Core - Building Custom CLIs
+
+Devex exposes its framework via `Devex::Core` for building custom CLI applications:
+
+```ruby
+require "devex/core"
+
+config = Devex::Core::Configuration.new(
+  executable_name: "mycli",
+  flag_prefix: "mycli",              # --mycli-version, --mycli-agent-mode
+  project_markers: %w[.mycli.yml .git Gemfile],
+  env_prefix: "MYCLI"                # MYCLI_AGENT_MODE, MYCLI_ENV
+)
+
+cli = Devex::Core::CLI.new(config: config)
+cli.load_tools("/path/to/tools")
+exit cli.run(ARGV)
+```
+
+**Available at `Devex::Core`:**
+- `Configuration` - All configurable values
+- `CLI` - Main CLI class
+- `Tool` - Tool/command representation
+- `Dirs` - Directory context (instance-based)
+- `ProjectPaths` - Lazy path resolution
+- `Context` - Runtime detection (terminal, agent, CI)
+- `Output` - Styled output helpers
+- `Exec` - Command execution
+- `Path` - Immutable path operations
+- `ANSI` - Terminal colors
+
+For dx specifically, use `require "devex"` which loads Core plus dx-specific configuration and builtins.
+
 ## Current State (v0.3.4)
 
 ### What Works
@@ -118,16 +151,19 @@ Templates are always loaded from the gem; tasks can be loaded from both.
 
 ```
 lib/devex/
-├── cli.rb              # Entry point, dispatch, global flags, help extraction
+├── core.rb             # Framework entry point (require "devex/core")
+├── core/
+│   └── configuration.rb # Configuration class for custom CLIs
+├── cli.rb              # Main CLI class (accepts Configuration)
 ├── tool.rb             # Tool class, Flag, Arg, ExecutionContext
 ├── dsl.rb              # DSL and DSLContext for parsing task files
 ├── loader.rb           # Directory scanning, file loading
-├── context.rb          # Runtime detection (IMPORTANT - read this)
+├── context.rb          # Runtime detection (configurable env prefix)
 ├── output.rb           # Styled output helpers
-├── dirs.rb             # Core directory context (invoked, project, dest)
-├── project_paths.rb    # Lazy project path resolution (prj.lib, prj.test, etc.)
+├── dirs.rb             # Directory context (instance-based, configurable markers)
+├── project_paths.rb    # Lazy path resolution (configurable conventions)
 ├── working_dir.rb      # Immutable working directory with `within` blocks
-├── exec.rb             # Command execution module (run, capture, spawn, etc.)
+├── exec.rb             # Command execution (uses cli.executable_name)
 ├── exec/
 │   ├── result.rb       # Result class with monad operations
 │   └── controller.rb   # Background process management
@@ -138,7 +174,7 @@ lib/devex/
 │   └── global.rb       # Global mode loader
 ├── templates/          # ERB templates for text output
 │   └── debug.erb       # Debug command template
-└── builtins/
+└── builtins/           # dx-specific built-in commands
     ├── .index.rb       # Root tool config
     ├── debug.rb        # Context debugging (hidden)
     ├── version.rb      # Version management

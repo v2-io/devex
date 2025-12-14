@@ -11,31 +11,32 @@ module Devex
   #   prj.root        # Project root directory
   #   prj.lib         # lib/
   #   prj.test        # test/ or spec/ (discovered)
-  #   prj.config      # .dx.yml or .dx/config.yml
+  #   prj.config      # config file path
   #   prj["**/*.rb"]  # Glob from project root
   #
   # Paths are resolved lazily on first access. If a conventional path
   # doesn't exist, you get a clear error with remediation steps.
   #
-  # See ADR-003 for full specification.
+  # @example Core usage with custom config
+  #   config = Devex::Core::Configuration.new(
+  #     organized_dir: ".mycli",
+  #     config_file: ".mycli.yml"
+  #   )
+  #   prj = Devex::ProjectPaths.new(root: project_root, config: config)
   #
   class ProjectPaths
     Path = Support::Path
 
-    # Conventional path mappings
+    # Default conventional path mappings
     # Values can be:
     #   - String: exact path relative to root
     #   - Array: list of alternatives (first existing wins)
     #   - Symbol: special handler method
     #   - String with *: glob pattern
-    CONVENTIONS = {
+    #   - nil: returns root
+    DEFAULT_CONVENTIONS = {
       root:           nil,                # Always project_dir
       git:            ".git",
-      dx:             ".dx",
-      config:         :detect_config,
-      tools:          :detect_tools,
-      templates:      :detect_templates,
-      hooks:          :detect_hooks,
       lib:            "lib",
       src:            "src",
       bin:            "bin",
@@ -62,8 +63,21 @@ module Devex
       scripts:        "scripts"
     }.freeze
 
-    def initialize(root: nil, overrides: {})
+    # dx-specific conventions (added when no config provided)
+    DX_CONVENTIONS = {
+      dx:             ".dx",
+      config:         :detect_config,
+      tools:          :detect_tools,
+      templates:      :detect_templates,
+      hooks:          :detect_hooks
+    }.freeze
+
+    # @param root [String, Path, nil] project root (defaults to Dirs.project_dir)
+    # @param config [Core::Configuration, nil] configuration for customization
+    # @param overrides [Hash] explicit path overrides
+    def initialize(root: nil, config: nil, overrides: {})
       @root      = root ? Path[root] : Dirs.project_dir
+      @config    = config
       @overrides = overrides.transform_keys(&:to_sym)
       @cache     = {}
     end
@@ -71,22 +85,70 @@ module Devex
     # Project root directory
     attr_reader :root
 
+    # Framework configuration (if any)
+    # Note: Named `configuration` to avoid shadowing the `config` path accessor
+    def configuration
+      @config
+    end
+
     # Glob from project root
     def [](pattern, **) = @root[pattern, **]
 
-    # Is this project in organized mode? (.dx/ directory exists)
-    def organized_mode? = @organized ||= (@root / ".dx").directory?
+    # Is this project in organized mode? (organized_dir exists)
+    def organized_mode?
+      @organized ||= begin
+        org_dir = organized_dir_name
+        org_dir && (@root / org_dir).directory?
+      end
+    end
 
     # Dynamic path resolution
     def method_missing(name, *args, &)
-      return super unless CONVENTIONS.key?(name) || @overrides.key?(name)
+      return super unless conventions.key?(name) || @overrides.key?(name)
 
       @cache[name] ||= resolve(name)
     end
 
-    def respond_to_missing?(name, include_private = false) = CONVENTIONS.key?(name) || @overrides.key?(name) || super
+    def respond_to_missing?(name, include_private = false)
+      conventions.key?(name) || @overrides.key?(name) || super
+    end
 
     private
+
+    # Merged conventions (config overrides + defaults)
+    def conventions
+      @conventions ||= begin
+        base = DEFAULT_CONVENTIONS.dup
+
+        # Add dx-specific conventions unless config specifies otherwise
+        if @config
+          # Add organized_dir convention if configured
+          base[:organized_dir] = @config.organized_dir if @config.organized_dir
+          # Add config/tools/templates/hooks with detection
+          base[:config] = :detect_config if @config.config_file || @config.organized_dir
+          base[:tools] = :detect_tools
+          base[:templates] = :detect_templates
+          base[:hooks] = :detect_hooks
+          # Merge custom conventions from config
+          base.merge!(@config.path_conventions) if @config.path_conventions
+        else
+          # No config = dx mode for backward compatibility
+          base.merge!(DX_CONVENTIONS)
+        end
+
+        base
+      end
+    end
+
+    # Name of organized mode directory (e.g., ".dx", ".mycli")
+    def organized_dir_name
+      @config&.organized_dir || ".dx"
+    end
+
+    # Name of simple mode config file (e.g., ".dx.yml", ".mycli.yml")
+    def config_file_name
+      @config&.config_file || ".dx.yml"
+    end
 
     def resolve(name)
       # Check overrides first
@@ -98,7 +160,7 @@ module Devex
       end
 
       # Special handlers
-      convention = CONVENTIONS[name]
+      convention = conventions[name]
       case convention
       when nil    then @root  # root returns the root
       when Symbol then send(convention)
@@ -124,29 +186,35 @@ module Devex
     # ─────────────────────────────────────────────────────────────
 
     def detect_config
-      dx_dir = @root / ".dx"
-      dx_yml = @root / ".dx.yml"
+      org_dir_name = organized_dir_name
+      cfg_file_name = config_file_name
 
-      if dx_dir.exist? && dx_yml.exist?
-        fail_config_conflict!(dx_dir, dx_yml)
-      elsif dx_dir.exist?
-        dx_dir / "config.yml"
+      org_dir = org_dir_name ? (@root / org_dir_name) : nil
+      cfg_file = cfg_file_name ? (@root / cfg_file_name) : nil
+
+      # Check for conflict (both exist)
+      if org_dir&.exist? && cfg_file&.exist?
+        fail_config_conflict!(org_dir, cfg_file)
+      elsif org_dir&.exist?
+        org_dir / "config.yml"
+      elsif cfg_file
+        cfg_file  # May or may not exist
       else
-        dx_yml  # May or may not exist
+        @root / "config.yml"  # Fallback
       end
     end
 
     def detect_tools
       if organized_mode?
-        @root / ".dx" / "tools"
+        @root / organized_dir_name / "tools"
       else
-        @root / "tools"
+        @root / (@config&.tools_dir || "tools")
       end
     end
 
     def detect_templates
       if organized_mode?
-        @root / ".dx" / "templates"
+        @root / organized_dir_name / "templates"
       else
         @root / "templates"
       end
@@ -154,9 +222,8 @@ module Devex
 
     def detect_hooks
       if organized_mode?
-        @root / ".dx" / "hooks"
+        @root / organized_dir_name / "hooks"
       else
-        # In simple mode, hooks are less common; still provide the path
         @root / "hooks"
       end
     end
@@ -181,58 +248,62 @@ module Devex
     # ─────────────────────────────────────────────────────────────
 
     def fail_missing!(name, tried)
+      cfg_file = config_file_name || "config file"
+
       message = <<~ERR
         ERROR: Project #{name} directory not found
 
           Looked for: #{tried.join(', ')}
           Project root: #{@root}
 
-          To configure a custom location, add to .dx.yml:
+          To configure a custom location, add to #{cfg_file}:
             paths:
               #{name}: your/#{name}/dir/
 
         Exit code: 78 (EX_CONFIG)
       ERR
 
-      raise message unless Devex.respond_to?(:fail!)
-
-      Devex.fail!(message, exit_code: 78)
+      raise message
     end
 
-    def fail_config_conflict!(dx_dir, dx_yml)
-      dx_dir_time = begin
-        dx_dir.mtime
+    def fail_config_conflict!(org_dir, cfg_file)
+      org_dir_time = begin
+        org_dir.mtime
       rescue StandardError
         Time.now
       end
-      dx_yml_time = begin
-        dx_yml.mtime
+      cfg_file_time = begin
+        cfg_file.mtime
       rescue StandardError
         Time.now
       end
+
+      org_name = organized_dir_name
+      cfg_name = config_file_name
 
       message = <<~ERR
-        ERROR: Conflicting dx configuration
+        ERROR: Conflicting configuration
 
           Found both:
-            .dx.yml      (modified: #{dx_yml_time.strftime('%Y-%m-%d %H:%M:%S')})
-            .dx/         (modified: #{dx_dir_time.strftime('%Y-%m-%d %H:%M:%S')})
+            #{cfg_name}      (modified: #{cfg_file_time.strftime('%Y-%m-%d %H:%M:%S')})
+            #{org_name}/         (modified: #{org_dir_time.strftime('%Y-%m-%d %H:%M:%S')})
 
           Please use one or the other:
-            - Simple:    .dx.yml + tools/
-            - Organized: .dx/config.yml + .dx/tools/
+            - Simple:    #{cfg_name} + tools/
+            - Organized: #{org_name}/config.yml + #{org_name}/tools/
 
           To migrate from simple to organized:
-            mkdir -p .dx
-            mv .dx.yml .dx/config.yml
-            mv tools/ .dx/tools/
+            mkdir -p #{org_name}
+            mv #{cfg_name} #{org_name}/config.yml
+            mv tools/ #{org_name}/tools/
 
         Exit code: 78 (EX_CONFIG)
       ERR
 
-      raise message unless Devex.respond_to?(:fail!)
-
-      Devex.fail!(message, exit_code: 78)
+      raise message
     end
   end
+
+  # Backward compatibility: CONVENTIONS constant
+  ProjectPaths::CONVENTIONS = ProjectPaths::DEFAULT_CONVENTIONS.merge(ProjectPaths::DX_CONVENTIONS).freeze
 end

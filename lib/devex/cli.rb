@@ -1,7 +1,20 @@
 # frozen_string_literal: true
 
 module Devex
-  # Main CLI class - entry point for dx command
+  # Main CLI class - entry point for CLI commands.
+  #
+  # Can be used with a Configuration for custom CLI applications,
+  # or with defaults for backward-compatible dx usage.
+  #
+  # @example Core usage
+  #   config = Devex::Core::Configuration.new(
+  #     executable_name: "mycli",
+  #     flag_prefix: "mycli"
+  #   )
+  #   cli = Devex::CLI.new(config: config)
+  #   cli.load_tools("/path/to/tools")
+  #   exit cli.run(ARGV)
+  #
   class CLI
     HELP_FLAGS = %w[-h -? --help].freeze
     HELP_WORD  = "help"
@@ -15,32 +28,19 @@ module Devex
       color:    ["--color=MODE"]
     }.freeze
 
-    # Project operation flag (shown in help)
-    PROJECT_FLAGS = {
-      dx_from_dir: ["--dx-from-dir=PATH"]
-    }.freeze
+    attr_reader :root_tool, :executable_name, :project_root, :global_options, :config
 
-    # Hidden debug flags for testing/reproduction (not shown in help)
-    # These set Context overrides directly
-    DEBUG_FLAGS = {
-      dx_force_color:    ["--dx-force-color"],
-      dx_no_color:       ["--dx-no-color"],
-      dx_agent_mode:     ["--dx-agent-mode"],
-      dx_no_agent_mode:  ["--dx-no-agent-mode"],
-      dx_interactive:    ["--dx-interactive"],
-      dx_no_interactive: ["--dx-no-interactive"],
-      dx_env:            ["--dx-env=ENV"]
-    }.freeze
-
-    attr_reader :root_tool, :executable_name, :project_root, :global_options
-
-    def initialize(executable_name: "dx")
-      @executable_name = executable_name
-      @root_tool       = Tool.new(nil) # root has no name
+    # @param executable_name [String] name of the executable (for help text)
+    # @param config [Core::Configuration, nil] full configuration (overrides executable_name)
+    def initialize(executable_name: "dx", config: nil)
+      @config          = config
+      @executable_name = config&.executable_name || executable_name
+      @flag_prefix     = config&.flag_prefix || "dx"
+      @root_tool       = Tool.new(nil)
       @builtin_root    = Tool.new(nil)
       @mixins          = {}
       @project_root    = nil
-      @global_options = {
+      @global_options  = {
         format:  nil,
         verbose: 0,
         quiet:   false
@@ -51,12 +51,15 @@ module Devex
     def run(argv = ARGV)
       argv = argv.dup
 
-      # Extract and apply global flags first (before help or tool resolution)
-      argv, show_dx_version = extract_global_flags(argv)
+      # Configure Context with our configuration (for env var prefix, etc.)
+      Context.configure(@config) if @config
 
-      # --dx-version shows devex gem version and exits
-      if show_dx_version
-        output_dx_version
+      # Extract and apply global flags first (before help or tool resolution)
+      argv, show_version = extract_global_flags(argv)
+
+      # --{prefix}-version shows gem version and exits
+      if show_version
+        output_gem_version
         return 0
       end
 
@@ -92,10 +95,17 @@ module Devex
       end
     end
 
-    # Load built-in tools from gem
-    def load_builtins
-      builtin_dir = File.join(__dir__, "builtins")
+    # Load built-in tools from a directory
+    # @param dir [String, nil] directory path (uses gem builtins if nil)
+    def load_builtins(dir = nil)
+      builtin_dir = dir || File.join(__dir__, "builtins")
       Loader.load_directory(builtin_dir, @builtin_root, @mixins)
+    end
+
+    # Load tools from a directory
+    # @param dir [String] directory path
+    def load_tools(dir)
+      Loader.load_directory(dir, @root_tool, @mixins) if dir && File.directory?(dir)
     end
 
     # Load project-specific tools
@@ -110,7 +120,6 @@ module Devex
     end
 
     # Add project's lib/ directory to $LOAD_PATH if it exists.
-    # This allows tools to use `require "myproject/foo"` instead of require_relative.
     def add_project_lib_to_load_path(project_root)
       return unless project_root
 
@@ -146,11 +155,32 @@ module Devex
 
     private
 
+    # Flag prefix for framework flags (--{prefix}-version, etc.)
+    def flag_prefix
+      @flag_prefix
+    end
+
     # Extract global flags from argv, apply Context overrides
-    # Returns [remaining_argv, show_dx_version]
+    # Returns [remaining_argv, show_version]
     def extract_global_flags(argv)
-      remaining       = []
-      show_dx_version = false
+      remaining    = []
+      show_version = false
+      prefix       = flag_prefix
+
+      # Build dynamic flag patterns
+      version_flag      = "--#{prefix}-version"
+      from_dir_flag     = "--#{prefix}-from-dir"
+      force_color_flag  = "--#{prefix}-force-color"
+      no_color_flag     = "--#{prefix}-no-color"
+      agent_mode_flag   = "--#{prefix}-agent-mode"
+      no_agent_flag     = "--#{prefix}-no-agent-mode"
+      interactive_flag  = "--#{prefix}-interactive"
+      no_interactive    = "--#{prefix}-no-interactive"
+      env_flag_pattern  = /^--#{Regexp.escape(prefix)}-env=(.+)$/
+      ci_flag           = "--#{prefix}-ci"
+      no_ci_flag        = "--#{prefix}-no-ci"
+      terminal_flag     = "--#{prefix}-terminal"
+      no_terminal_flag  = "--#{prefix}-no-terminal"
 
       i = 0
       while i < argv.length
@@ -159,11 +189,10 @@ module Devex
 
         # Check universal flags
         case arg
-        when "--dx-version"
-          show_dx_version = true
-          consumed        = true
+        when version_flag
+          show_version = true
+          consumed     = true
         when "-f", "--format"
-          # -f FORMAT (two args)
           @global_options[:format] = argv[i + 1]
           i        += 1
           consumed = true
@@ -172,16 +201,16 @@ module Devex
           consumed = true
         when "-v", "--verbose"
           @global_options[:verbose] += 1
-          consumed                  = true
+          consumed = true
         when "--no-verbose"
           @global_options[:verbose] = 0
-          consumed                  = true
+          consumed = true
         when "-q", "--quiet"
           @global_options[:quiet] = true
-          consumed                 = true
+          consumed = true
         when "--no-quiet"
           @global_options[:quiet] = false
-          consumed                 = true
+          consumed = true
         when "--no-color"
           Context.set_override(:color, false)
           consumed = true
@@ -195,44 +224,43 @@ module Devex
           Context.clear_override(:color)
           consumed = true
         when /^--color=(.+)$/
-          # Unknown color mode, ignore
           consumed = true
         end
 
         # Check hidden debug flags (not in help)
         unless consumed
           case arg
-          when "--dx-force-color"
+          when force_color_flag
             Context.set_override(:color, true)
             consumed = true
-          when "--dx-no-color"
+          when no_color_flag
             Context.set_override(:color, false)
             consumed = true
-          when "--dx-agent-mode"
+          when agent_mode_flag
             Context.set_override(:agent_mode, true)
             consumed = true
-          when "--dx-no-agent-mode"
+          when no_agent_flag
             Context.set_override(:agent_mode, false)
             consumed = true
-          when "--dx-interactive"
+          when interactive_flag
             Context.set_override(:interactive, true)
             consumed = true
-          when "--dx-no-interactive"
+          when no_interactive
             Context.set_override(:interactive, false)
             consumed = true
-          when /^--dx-env=(.+)$/
+          when env_flag_pattern
             Context.set_override(:env, ::Regexp.last_match(1))
             consumed = true
-          when "--dx-ci"
+          when ci_flag
             Context.set_override(:ci, true)
             consumed = true
-          when "--dx-no-ci"
+          when no_ci_flag
             Context.set_override(:ci, false)
             consumed = true
-          when "--dx-terminal"
+          when terminal_flag
             Context.set_override(:terminal, true)
             consumed = true
-          when "--dx-no-terminal"
+          when no_terminal_flag
             Context.set_override(:terminal, false)
             consumed = true
           end
@@ -242,23 +270,13 @@ module Devex
         i += 1
       end
 
-      [remaining, show_dx_version]
+      [remaining, show_version]
     end
 
     # Extract help indicators from argv, return [cleaned_argv, show_help]
-    #
-    # Handles:
-    #   dx help           -> [], true (help for root)
-    #   dx help foo       -> [foo], true
-    #   dx foo help       -> [foo], true
-    #   dx foo --help     -> [foo], true
-    #   dx foo -h         -> [foo], true
-    #   dx -?             -> [], true
-    #
     def extract_help(argv)
       show_help = false
 
-      # Check for help flags
       HELP_FLAGS.each do |flag|
         if argv.include?(flag)
           argv.delete(flag)
@@ -266,7 +284,6 @@ module Devex
         end
       end
 
-      # Check for 'help' as a word (not a flag)
       if argv.include?(HELP_WORD)
         argv.delete(HELP_WORD)
         show_help = true
@@ -276,18 +293,14 @@ module Devex
     end
 
     # Resolve a tool from argv
-    # Returns [tool, remaining_argv]
     def resolve_tool(argv)
       tool      = @root_tool
       remaining = argv.dup
 
       while remaining.any?
         candidate = remaining.first
-
-        # Stop if it looks like a flag
         break if candidate.start_with?("-")
 
-        # Try to find subtool
         subtool = tool.subtool(candidate)
         break unless subtool
 
@@ -300,26 +313,27 @@ module Devex
 
     # Generate help text for global options
     def global_options_help
+      prefix = flag_prefix
       <<~HELP
 
         Global Options:
-          -f, --format=FORMAT   Output format (text, json, yaml)
-          -v, --verbose         Increase verbosity (can be repeated)
-          -q, --quiet           Suppress non-error output
-          --no-color            Disable colored output
-          --color=MODE          Color mode: auto, always, never
-          --dx-version          Show devex gem version
-          --dx-from-dir=PATH    Operate on project at PATH
+          -f, --format=FORMAT      Output format (text, json, yaml)
+          -v, --verbose            Increase verbosity (can be repeated)
+          -q, --quiet              Suppress non-error output
+          --no-color               Disable colored output
+          --color=MODE             Color mode: auto, always, never
+          --#{prefix}-version#{' ' * (14 - prefix.length)}Show #{@executable_name} version
+          --#{prefix}-from-dir=PATH  Operate on project at PATH
       HELP
     end
 
-    # Output devex gem version (not project version)
-    def output_dx_version
+    # Output gem version (not project version)
+    def output_gem_version
       if @global_options[:format] == "json"
         require "json"
-        puts JSON.generate({ name: "devex", version: VERSION })
+        puts JSON.generate({ name: @executable_name, version: VERSION })
       else
-        puts "devex #{VERSION}"
+        puts "#{@executable_name} #{VERSION}"
       end
     end
   end

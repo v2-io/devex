@@ -1,22 +1,20 @@
 # frozen_string_literal: true
 
-require_relative "devex/version"
-require_relative "devex/context"
-require_relative "devex/output"
-require_relative "devex/template_helpers"
-require_relative "devex/exec"  # Must be before tool.rb (ExecutionContext includes Exec)
-require_relative "devex/tool"
-require_relative "devex/dsl"
-require_relative "devex/loader"
-require_relative "devex/cli"
-require_relative "devex/dirs"
-require_relative "devex/project_paths"
-require_relative "devex/working_dir"
+# Devex - The dx CLI tool with all builtins and dx-specific configuration.
+#
+# This is the full dx application. For just the CLI framework (to build
+# your own CLI tool), use: require "devex/core"
+
+require_relative "devex/core"
 
 module Devex
   class Error < StandardError; end
 
-  # Project root markers, checked in order
+  # ─────────────────────────────────────────────────────────────
+  # dx-specific Configuration
+  # ─────────────────────────────────────────────────────────────
+
+  # dx-specific project root markers, checked in order
   ROOT_MARKERS = %w[.dx.yml .dx .git tools].freeze
 
   # Default tools directory name
@@ -25,13 +23,35 @@ module Devex
   # Templates directory name within the gem
   TEMPLATES_DIR = "templates"
 
+  # dx-specific configuration for CLI
+  DX_CONFIG = Core::Configuration.new(
+    executable_name:  "dx",
+    flag_prefix:      "dx",
+    project_markers:  %w[.dx.yml .dx .git tools Gemfile Rakefile .devex.yml],
+    config_file:      ".dx.yml",
+    organized_dir:    ".dx",
+    tools_dir:        "tools",
+    env_prefix:       "DX",
+    delegation_file:  ".dx-use-local"
+  ).freeze
+
   class << self
+    # Get the dx configuration
+    # @return [Core::Configuration]
+    def config
+      DX_CONFIG
+    end
+
     # Root directory of the devex gem itself
     # Used for locating built-in templates, builtins, etc.
-    def gem_root = @gem_root ||= File.expand_path('..', __dir__)
+    def gem_root
+      @gem_root ||= File.expand_path('..', __dir__)
+    end
 
     # Path to the templates directory within the gem
-    def templates_path = @templates_path ||= File.join(File.dirname(__FILE__), "devex", TEMPLATES_DIR)
+    def templates_path
+      @templates_path ||= File.join(File.dirname(__FILE__), "devex", TEMPLATES_DIR)
+    end
 
     # Load and render a template from the gem's templates directory
     # Returns the rendered string

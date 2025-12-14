@@ -1,32 +1,47 @@
 # frozen_string_literal: true
 
 module Devex
-  # Runtime context detection for devex tasks.
+  # Runtime context detection for CLI applications.
   #
   # Detects whether we're running in a terminal, CI, agent mode, etc.
   # This informs output formatting, interactivity, and behavior.
   #
   # Detection hierarchy (highest to lowest priority):
-  #   1. Explicit environment variables (DX_AGENT_MODE, DX_BATCH, etc.)
-  #   2. CI environment detection
-  #   3. Terminal/stream auto-detection
+  #   1. Programmatic overrides (for testing)
+  #   2. Explicit environment variables ({PREFIX}_AGENT_MODE, etc.)
+  #   3. CI environment detection
+  #   4. Terminal/stream auto-detection
   #
   # Also tracks:
   #   - Task invocation call tree (which task invoked which)
   #   - Environment (development, test, staging, production)
   #
+  # @example Core usage with custom env prefix
+  #   config = Devex::Core::Configuration.new(env_prefix: "MYCLI")
+  #   Devex::Context.configure(config)
+  #   # Now checks MYCLI_AGENT_MODE, MYCLI_ENV, etc.
+  #
   # See docs/ref/agent-mode.md and docs/ref/io-handling.md for rationale.
   #
   module Context
-    # Environment variable names we check
-    ENV_AGENT_MODE  = %w[DX_AGENT_MODE DEVEX_AGENT_MODE].freeze
-    ENV_BATCH       = %w[DX_BATCH DEVEX_BATCH].freeze
-    ENV_INTERACTIVE = %w[DX_INTERACTIVE DEVEX_INTERACTIVE].freeze
-    ENV_NO_COLOR  = %w[NO_COLOR DX_NO_COLOR].freeze
-    ENV_FORCE_COLOR = %w[FORCE_COLOR DX_FORCE_COLOR].freeze
+    # Default environment variable names (dx-specific, for backward compatibility)
+    DEFAULT_ENV_AGENT_MODE  = %w[DX_AGENT_MODE DEVEX_AGENT_MODE].freeze
+    DEFAULT_ENV_BATCH       = %w[DX_BATCH DEVEX_BATCH].freeze
+    DEFAULT_ENV_INTERACTIVE = %w[DX_INTERACTIVE DEVEX_INTERACTIVE].freeze
+    DEFAULT_ENV_NO_COLOR    = %w[NO_COLOR DX_NO_COLOR].freeze
+    DEFAULT_ENV_FORCE_COLOR = %w[FORCE_COLOR DX_FORCE_COLOR].freeze
+    DEFAULT_ENV_ENVIRONMENT = %w[DX_ENV DEVEX_ENV RAILS_ENV RACK_ENV].freeze
+    DEFAULT_ENV_CALL_TREE   = "DX_CALL_TREE"
 
-    # Environment detection (Rails-style)
-    ENV_ENVIRONMENT     = %w[DX_ENV DEVEX_ENV RAILS_ENV RACK_ENV].freeze
+    # Backward compatibility aliases
+    ENV_AGENT_MODE  = DEFAULT_ENV_AGENT_MODE
+    ENV_BATCH       = DEFAULT_ENV_BATCH
+    ENV_INTERACTIVE = DEFAULT_ENV_INTERACTIVE
+    ENV_NO_COLOR    = DEFAULT_ENV_NO_COLOR
+    ENV_FORCE_COLOR = DEFAULT_ENV_FORCE_COLOR
+    ENV_ENVIRONMENT = DEFAULT_ENV_ENVIRONMENT
+    ENV_CALL_TREE   = DEFAULT_ENV_CALL_TREE
+
     DEFAULT_ENVIRONMENT = "development"
 
     # Canonical environment names and their aliases
@@ -40,9 +55,6 @@ module Devex
       "prod"    => "production",
       "live"    => "production"
     }.freeze
-
-    # Call tree tracking - passed via environment between processes
-    ENV_CALL_TREE = "DX_CALL_TREE"
 
     # Common CI environment variables
     CI_ENV_VARS = %w[
@@ -68,7 +80,30 @@ module Devex
     @overrides       = {}
     @overrides_mutex = Mutex.new
 
+    # Configuration for custom env prefix (nil = use defaults)
+    @config       = nil
+    @config_mutex = Mutex.new
+
     class << self
+      # Configure Context with a Core::Configuration
+      # @param config [Core::Configuration, nil] configuration with env_prefix
+      def configure(config)
+        @config_mutex.synchronize { @config = config }
+        reset_env!  # Clear cached environment
+      end
+
+      # Get current configuration
+      # @return [Core::Configuration, nil]
+      def configuration
+        @config_mutex.synchronize { @config }
+      end
+
+      # Reset configuration (for testing)
+      def reset_configuration!
+        @config_mutex.synchronize { @config = nil }
+        reset_env!
+      end
+
       # Is stdout connected to a terminal?
       def stdout_tty? = $stdout.tty?
 
@@ -110,13 +145,19 @@ module Devex
       end
 
       # Is agent mode explicitly enabled via environment?
-      def agent_mode_env? = ENV_AGENT_MODE.any? { |var| truthy_env?(var) }
+      def agent_mode_env?
+        env_vars_for(:agent_mode).any? { |var| truthy_env?(var) }
+      end
 
       # Is batch mode explicitly enabled via environment?
-      def batch_mode_env? = ENV_BATCH.any? { |var| truthy_env?(var) }
+      def batch_mode_env?
+        env_vars_for(:batch).any? { |var| truthy_env?(var) }
+      end
 
       # Is interactive mode explicitly forced via environment?
-      def interactive_forced? = ENV_INTERACTIVE.any? { |var| truthy_env?(var) }
+      def interactive_forced?
+        env_vars_for(:interactive).any? { |var| truthy_env?(var) }
+      end
 
       # Are we running in a CI environment?
       def ci?
@@ -127,10 +168,14 @@ module Devex
       end
 
       # Is color output explicitly disabled?
-      def no_color? = ENV_NO_COLOR.any? { |var| ENV.key?(var) }
+      def no_color?
+        env_vars_for(:no_color).any? { |var| ENV.key?(var) }
+      end
 
       # Is color output explicitly forced on?
-      def force_color? = ENV_FORCE_COLOR.any? { |var| truthy_env?(var) }
+      def force_color?
+        env_vars_for(:force_color).any? { |var| truthy_env?(var) }
+      end
 
       # Is data being piped in or out?
       # True if stdin is not a tty (data piped in) OR stdout is not a tty (data piped out)
@@ -211,7 +256,7 @@ module Devex
 
       # Get the call tree inherited from parent process via environment
       def inherited_tree
-        tree_str = ENV.fetch(ENV_CALL_TREE, nil)
+        tree_str = ENV.fetch(call_tree_env_var, nil)
         return [] if tree_str.nil? || tree_str.empty?
 
         tree_str.split(":")
@@ -271,14 +316,26 @@ module Devex
       # Machine-readable context for passing to subprocesses
       # Include call tree so child processes know their invocation chain
       def to_env
+        prefix = env_prefix
         tree = call_tree
         {
-          "DX_AGENT_MODE"  => agent_mode? ? "1" : "0",
-          "DX_INTERACTIVE" => interactive? ? "1" : "0",
-          "DX_CI"          => ci? ? "1" : "0",
-          "DX_ENV"         => env,
-          ENV_CALL_TREE    => tree.any? ? tree.join(":") : nil
+          "#{prefix}_AGENT_MODE"  => agent_mode? ? "1" : "0",
+          "#{prefix}_INTERACTIVE" => interactive? ? "1" : "0",
+          "#{prefix}_CI"          => ci? ? "1" : "0",
+          "#{prefix}_ENV"         => env,
+          call_tree_env_var       => tree.any? ? tree.join(":") : nil
         }.compact
+      end
+
+      # Get the configured env prefix (or default)
+      def env_prefix
+        cfg = configuration
+        cfg&.env_prefix || "DX"
+      end
+
+      # Get the call tree environment variable name
+      def call_tree_env_var
+        "#{env_prefix}_CALL_TREE"
       end
 
       # --- Programmatic overrides for testing ---
@@ -324,12 +381,43 @@ module Devex
         val && !val.empty? && val != "0" && val.downcase != "false"
       end
 
+      # Get environment variable names to check for a given setting.
+      # If configuration is set, uses configured prefix only.
+      # Otherwise, falls back to default (dx-specific) names.
+      def env_vars_for(setting)
+        cfg = configuration
+        if cfg
+          # Use only the configured prefix
+          prefix = cfg.env_prefix
+          case setting
+          when :agent_mode  then ["#{prefix}_AGENT_MODE"]
+          when :batch       then ["#{prefix}_BATCH"]
+          when :interactive then ["#{prefix}_INTERACTIVE"]
+          when :no_color    then ["NO_COLOR", "#{prefix}_NO_COLOR"]
+          when :force_color then ["FORCE_COLOR", "#{prefix}_FORCE_COLOR"]
+          when :env         then ["#{prefix}_ENV", "RAILS_ENV", "RACK_ENV"]
+          else                   []
+          end
+        else
+          # Default (dx-specific) names for backward compatibility
+          case setting
+          when :agent_mode  then DEFAULT_ENV_AGENT_MODE
+          when :batch       then DEFAULT_ENV_BATCH
+          when :interactive then DEFAULT_ENV_INTERACTIVE
+          when :no_color    then DEFAULT_ENV_NO_COLOR
+          when :force_color then DEFAULT_ENV_FORCE_COLOR
+          when :env         then DEFAULT_ENV_ENVIRONMENT
+          else                   []
+          end
+        end
+      end
+
       def detect_environment
         # Check override first
         override = override_or(:env)
         return override if override
 
-        ENV_ENVIRONMENT.each do |var|
+        env_vars_for(:env).each do |var|
           val = ENV.fetch(var, nil)
           next if val.nil? || val.empty?
 

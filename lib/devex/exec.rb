@@ -201,7 +201,7 @@ module Devex
     #
     def ruby(*args, **) = execute_command(["ruby", *args], **, clean_env: true)
 
-    # Run another dx tool programmatically.
+    # Run another tool programmatically.
     #
     # Propagates call tree so child tool knows it was invoked from parent.
     # Inherits verbosity and format settings.
@@ -216,18 +216,26 @@ module Devex
     #   tool "version", capture: true
     #
     def tool(tool_name, *args, capture: false, **opts)
+      # Get executable name and env prefix from CLI config if available
+      exe_name   = respond_to?(:cli) && cli ? cli.executable_name : "dx"
+      env_prefix = respond_to?(:cli) && cli&.config ? cli.config.env_prefix : "DX"
+
       # Propagate call tree
-      call_tree    = ENV.fetch("DX_CALL_TREE", "")
-      current_tool = ENV.fetch("DX_CURRENT_TOOL", "")
+      call_tree_var = "#{env_prefix}_CALL_TREE"
+      current_var   = "#{env_prefix}_CURRENT_TOOL"
+      invoked_var   = "#{env_prefix}_INVOKED_FROM_TOOL"
+
+      call_tree    = ENV.fetch(call_tree_var, "")
+      current_tool = ENV.fetch(current_var, "")
       new_tree     = call_tree.empty? ? current_tool : "#{call_tree}:#{current_tool}"
 
       env = opts[:env] || {}
       env = env.merge(
-        "DX_CALL_TREE"         => new_tree,
-        "DX_INVOKED_FROM_TOOL" => "1"
+        call_tree_var => new_tree,
+        invoked_var   => "1"
       )
 
-      cmd = ["dx", tool_name, *args]
+      cmd = [exe_name, tool_name, *args]
       if capture
         execute_command(cmd, **opts, env: env, out: :capture, err: :capture)
       else
