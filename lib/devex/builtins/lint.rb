@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Uses prj paths for all file operations.
+# Uses prj.linter - fails fast with helpful message if not found.
 
 desc "Run linter"
 
@@ -21,39 +21,16 @@ flag :diff, "-d", "--diff", desc: "Only lint changed files (git diff)"
 remaining_args :files, desc: "Specific files or patterns to lint"
 
 def run
-  linter = detect_linter
-  unless linter
-    $stderr.puts "No linter detected."
-    $stderr.puts "Expected: .rubocop.yml (rubocop) or .standard.yml (standardrb)"
-    $stderr.puts "Project root: #{prj.root}"
-    exit 1
-  end
+  # prj.linter fails fast if no .rubocop.yml or .standard.yml found
+  linter_config = prj.linter
 
-  case linter
-  when :rubocop   then run_rubocop
-  when :standardrb then run_standardrb
+  case linter_config.basename.to_s
+  when ".standard.yml" then run_standardrb
+  when ".rubocop.yml"  then run_rubocop
   end
 end
 
-def prj
-  @prj ||= Devex::ProjectPaths.new
-end
-
-# Linter detection - checks config files and Gemfile
-def detect_linter
-  return :standardrb if (prj.root / ".standard.yml").exist?
-  return :rubocop if (prj.root / ".rubocop.yml").exist?
-
-  # Check Gemfile for linter gems
-  gemfile = prj.root / "Gemfile"
-  if gemfile.exist?
-    content = gemfile.read
-    return :standardrb if content.include?("standard")
-    return :rubocop if content.include?("rubocop")
-  end
-
-  nil
-end
+def prj = @prj ||= Devex::ProjectPaths.new
 
 def run_rubocop
   args = ["rubocop"]

@@ -51,6 +51,7 @@ module Devex
       version:        :detect_version,
       gemfile:        "Gemfile",
       gemspec:        "*.gemspec",
+      linter:         %w[.standard.yml .rubocop.yml],
       mise:           %w[.mise.toml .tool-versions],
       env:            ".env",
       tmp:            "tmp",
