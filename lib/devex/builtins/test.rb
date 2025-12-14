@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Uses prj.test to find test directory - no manual path detection needed.
+# Uses prj.test - fails fast with helpful message if not found.
 
 desc "Run tests"
 
@@ -21,19 +21,8 @@ flag :fail_fast, "--fail-fast", desc: "Stop on first failure"
 remaining_args :files, desc: "Specific test files or patterns"
 
 def run
-  # prj.test finds test/, spec/, or tests/ automatically
-  test_dir = begin
-    prj.test
-  rescue StandardError
-    nil
-  end
-
-  unless test_dir
-    $stderr.puts "No test directory found (test/, spec/, or tests/)"
-    $stderr.puts "Project root: #{prj.root}"
-    exit 1
-  end
-
+  # prj.test fails fast if no test/, spec/, or tests/ directory exists
+  test_dir = prj.test
   env = coverage ? { "COVERAGE" => "1" } : {}
 
   # Determine framework from directory name
@@ -42,24 +31,17 @@ def run
     run_rspec(env)
   when "test", "tests"
     run_minitest(env)
-  else
-    $stderr.puts "Unknown test directory: #{test_dir.basename}"
-    exit 1
   end
 end
 
-def prj
-  @prj ||= Devex::ProjectPaths.new
-end
+def prj = @prj ||= Devex::ProjectPaths.new
 
 def run_minitest(env)
   if files.empty?
-    # Use rake test if Rakefile exists with test task
     rakefile = prj.root / "Rakefile"
     if rakefile.exist? && rake_has_test_task?(rakefile)
       cmd("rake", "test", env: env, chdir: prj.root).exit_on_failure!
     else
-      # Run all tests directly
       test_files = prj.test.glob("**/*_test.rb")
       if test_files.empty?
         $stderr.puts "No test files found in #{prj.test}"

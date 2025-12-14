@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Uses prj.gemspec for gemspec discovery.
+# Uses prj.gemspec - fails fast with helpful message if not found.
 
 desc "Gem packaging tasks"
 
@@ -17,52 +17,24 @@ tool "build" do
   desc "Build the gem"
 
   def run
-    gemspec = begin
-      prj.gemspec
-    rescue StandardError
-      nil
-    end
-
-    unless gemspec
-      $stderr.puts "No .gemspec file found"
-      $stderr.puts "Project root: #{prj.root}"
-      exit 1
-    end
-
-    cmd("gem", "build", gemspec.basename, chdir: prj.root).exit_on_failure!
+    cmd("gem", "build", prj.gemspec.basename, chdir: prj.root).exit_on_failure!
   end
 
-  def prj
-    @prj ||= Devex::ProjectPaths.new
-  end
+  def prj = @prj ||= Devex::ProjectPaths.new
 end
 
 tool "install" do
   desc "Build and install gem locally"
 
   def run
-    gemspec = begin
-      prj.gemspec
-    rescue StandardError
-      nil
-    end
-
-    unless gemspec
-      $stderr.puts "No .gemspec file found"
-      $stderr.puts "Project root: #{prj.root}"
-      exit 1
-    end
-
     $stdout.puts "Building gem..."
-    cmd("gem", "build", gemspec.basename, chdir: prj.root)
+    cmd("gem", "build", prj.gemspec.basename, chdir: prj.root)
       .then { install_built_gem }
       .exit_on_failure!
   end
 
   def install_built_gem
-    gem_files = prj.root.glob("*.gem")
-    gem_file = gem_files.max_by(&:mtime)
-
+    gem_file = prj.root.glob("*.gem").max_by(&:mtime)
     unless gem_file
       $stderr.puts "Build succeeded but no .gem file found"
       exit 1
@@ -79,9 +51,7 @@ tool "install" do
     result
   end
 
-  def prj
-    @prj ||= Devex::ProjectPaths.new
-  end
+  def prj = @prj ||= Devex::ProjectPaths.new
 end
 
 tool "clean" do
@@ -99,9 +69,7 @@ tool "clean" do
     end
   end
 
-  def prj
-    @prj ||= Devex::ProjectPaths.new
-  end
+  def prj = @prj ||= Devex::ProjectPaths.new
 end
 
 def run
