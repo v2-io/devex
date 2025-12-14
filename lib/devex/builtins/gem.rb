@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# Exec methods (cmd, capture, etc.) are automatically available - no include needed
+
 desc "Gem packaging tasks"
 
 long_desc <<~DESC
@@ -11,11 +13,8 @@ long_desc <<~DESC
     dx gem clean    - Remove built gem files
 DESC
 
-include Devex::Exec
-
 tool "build" do
   desc "Build the gem"
-  include Devex::Exec
 
   def run
     gemspec = find_gemspec
@@ -34,7 +33,6 @@ end
 
 tool "install" do
   desc "Build and install gem locally"
-  include Devex::Exec
 
   def run
     gemspec = find_gemspec

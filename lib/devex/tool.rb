@@ -246,6 +246,8 @@ module Devex
 
   # Execution context - the 'self' when a tool runs
   class ExecutionContext
+    include Exec  # All tools have access to cmd, capture, spawn, etc.
+
     attr_reader :options, :cli
 
     def initialize(tool, cli)

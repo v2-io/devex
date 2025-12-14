@@ -2,6 +2,12 @@
 
 All notable changes to devex will be documented in this file.
 
+## [0.3.2] - 2025-12-13
+
+### Fixed
+- ExecutionContext now includes Devex::Exec automatically, so nested tools (inside `tool "name" do ... end` blocks) have access to `cmd`, `capture`, etc. without explicit include
+- Moved exec.rb require before tool.rb to ensure proper load order
+
 ## [0.3.1] - 2025-12-13
 
 ### Added

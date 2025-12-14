@@ -4,12 +4,12 @@ require_relative "devex/version"
 require_relative "devex/context"
 require_relative "devex/output"
 require_relative "devex/template_helpers"
+require_relative "devex/exec"  # Must be before tool.rb (ExecutionContext includes Exec)
 require_relative "devex/tool"
 require_relative "devex/dsl"
 require_relative "devex/loader"
 require_relative "devex/cli"
 require_relative "devex/dirs"
-require_relative "devex/exec"
 require_relative "devex/project_paths"
 require_relative "devex/working_dir"
 

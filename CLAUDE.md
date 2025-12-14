@@ -13,7 +13,7 @@ Devex is a **lightweight Ruby CLI framework** providing a unified `dx` command f
 2. **Project templating** - `dx config` for setting up new projects (planned)
 3. **Conventions reference** - Embody best practices for CLI design and agent interaction
 
-## Current State (v0.3.1)
+## Current State (v0.3.2)
 
 ### What Works
 
