@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
+# Uses prj paths for all file operations.
+
 desc "Run linter"
 
 long_desc <<~DESC
-  Auto-detects and runs your linter.
+  Auto-detects and runs your linter from the project root.
 
   Supports:
     - RuboCop (.rubocop.yml)
@@ -18,13 +20,12 @@ flag :unsafe, "-A", "--unsafe-fix", desc: "Auto-fix including unsafe corrections
 flag :diff, "-d", "--diff", desc: "Only lint changed files (git diff)"
 remaining_args :files, desc: "Specific files or patterns to lint"
 
-include Devex::Exec
-
 def run
   linter = detect_linter
   unless linter
     $stderr.puts "No linter detected."
     $stderr.puts "Expected: .rubocop.yml (rubocop) or .standard.yml (standardrb)"
+    $stderr.puts "Project root: #{prj.root}"
     exit 1
   end
 
@@ -34,13 +35,19 @@ def run
   end
 end
 
+def prj
+  @prj ||= Devex::ProjectPaths.new
+end
+
+# Linter detection - checks config files and Gemfile
 def detect_linter
-  return :standardrb if File.exist?(".standard.yml")
-  return :rubocop if File.exist?(".rubocop.yml")
+  return :standardrb if (prj.root / ".standard.yml").exist?
+  return :rubocop if (prj.root / ".rubocop.yml").exist?
 
   # Check Gemfile for linter gems
-  if File.exist?("Gemfile")
-    content = File.read("Gemfile")
+  gemfile = prj.root / "Gemfile"
+  if gemfile.exist?
+    content = gemfile.read
     return :standardrb if content.include?("standard")
     return :rubocop if content.include?("rubocop")
   end
@@ -55,7 +62,7 @@ def run_rubocop
   args += changed_files if diff && files.empty?
   args += files unless files.empty?
 
-  cmd(*args).exit_on_failure!
+  cmd(*args, chdir: prj.root).exit_on_failure!
 end
 
 def run_standardrb
@@ -64,15 +71,14 @@ def run_standardrb
   args += changed_files if diff && files.empty?
   args += files unless files.empty?
 
-  cmd(*args).exit_on_failure!
+  cmd(*args, chdir: prj.root).exit_on_failure!
 end
 
-# Use capture() to get git output, then .stdout_lines for clean line splitting
 def changed_files
-  result = capture("git", "diff", "--name-only", "--diff-filter=ACMR", "HEAD")
+  result = capture("git", "diff", "--name-only", "--diff-filter=ACMR", "HEAD", chdir: prj.root)
   return [] if result.failed?
 
   result.stdout_lines
         .select { |f| f.end_with?(".rb") }
-        .select { |f| File.exist?(f) }
+        .select { |f| (prj.root / f).exist? }
 end

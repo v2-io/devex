@@ -2,6 +2,12 @@
 
 All notable changes to devex will be documented in this file.
 
+## [0.3.3] - 2025-12-13
+
+### Fixed
+- **Built-in tools now run from project root** - `dx test`, `dx lint`, `dx format`, `dx gem` now properly discover project root via `Devex::Dirs.project_dir` and run commands from there, regardless of current directory
+- Built-ins now use `ProjectPaths` (`prj.test`, `prj.gemspec`, etc.) for conventional path discovery instead of manual File.exist? checks
+
 ## [0.3.2] - 2025-12-13
 
 ### Fixed

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Exec methods (cmd, capture, etc.) are automatically available - no include needed
+# Uses prj.gemspec for gemspec discovery.
 
 desc "Gem packaging tasks"
 
@@ -17,17 +17,23 @@ tool "build" do
   desc "Build the gem"
 
   def run
-    gemspec = find_gemspec
+    gemspec = begin
+      prj.gemspec
+    rescue StandardError
+      nil
+    end
+
     unless gemspec
       $stderr.puts "No .gemspec file found"
+      $stderr.puts "Project root: #{prj.root}"
       exit 1
     end
 
-    cmd("gem", "build", gemspec).exit_on_failure!
+    cmd("gem", "build", gemspec.basename, chdir: prj.root).exit_on_failure!
   end
 
-  def find_gemspec
-    Dir.glob("*.gemspec").first
+  def prj
+    @prj ||= Devex::ProjectPaths.new
   end
 end
 
@@ -35,40 +41,46 @@ tool "install" do
   desc "Build and install gem locally"
 
   def run
-    gemspec = find_gemspec
+    gemspec = begin
+      prj.gemspec
+    rescue StandardError
+      nil
+    end
+
     unless gemspec
       $stderr.puts "No .gemspec file found"
+      $stderr.puts "Project root: #{prj.root}"
       exit 1
     end
 
-    # Chain build -> find gem -> install using .then { }
     $stdout.puts "Building gem..."
-    cmd("gem", "build", gemspec)
+    cmd("gem", "build", gemspec.basename, chdir: prj.root)
       .then { install_built_gem }
       .exit_on_failure!
   end
 
   def install_built_gem
-    gem_file = Dir.glob("*.gem").max_by { |f| File.mtime(f) }
+    gem_files = prj.root.glob("*.gem")
+    gem_file = gem_files.max_by(&:mtime)
+
     unless gem_file
       $stderr.puts "Build succeeded but no .gem file found"
       exit 1
     end
 
-    $stdout.puts "Installing #{gem_file}..."
-    result = cmd("gem", "install", gem_file, "--local")
+    $stdout.puts "Installing #{gem_file.basename}..."
+    result = cmd("gem", "install", gem_file.basename, "--local", chdir: prj.root)
 
-    # Clean up on success
     if result.success?
-      File.delete(gem_file)
+      gem_file.rm
       $stdout.puts "Installed and cleaned up."
     end
 
     result
   end
 
-  def find_gemspec
-    Dir.glob("*.gemspec").first
+  def prj
+    @prj ||= Devex::ProjectPaths.new
   end
 end
 
@@ -76,19 +88,22 @@ tool "clean" do
   desc "Remove built gem files"
 
   def run
-    gem_files = Dir.glob("*.gem")
+    gem_files = prj.root.glob("*.gem")
     if gem_files.empty?
       $stdout.puts "No .gem files to clean"
     else
       gem_files.each do |f|
-        File.delete(f)
-        $stdout.puts "Removed #{f}"
+        f.rm
+        $stdout.puts "Removed #{f.basename}"
       end
     end
+  end
+
+  def prj
+    @prj ||= Devex::ProjectPaths.new
   end
 end
 
 def run
-  # Show help if no subcommand given
   cli.show_help(tool)
 end
