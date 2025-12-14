@@ -1,6 +1,6 @@
 # ADR-002: Ruby Support Library (dx-support)
 
-**Status:** Draft
+**Status:** Accepted
 **Date:** 2025-12-13
 **Context:** Devex needs ergonomic Ruby utilities. Should be usable as standalone gem by projects using dx.
 
@@ -441,17 +441,16 @@ module Devex::Support::CoreExt::String
 
     # ─────────────────────────────────────────────────────────────
     # Aliases (common alternative names)
+    # Note: upcase/downcase are NOT aliased to avoid shadowing Ruby native methods
     # ─────────────────────────────────────────────────────────────
 
-    # up_case aliases
-    alias upcase up_case
+    # up_case aliases (not upcase - that's native Ruby)
     alias upper up_case
     alias uppercase up_case
     alias upper_case up_case
     alias caps up_case
 
-    # down_case aliases
-    alias downcase down_case
+    # down_case aliases (not downcase - that's native Ruby)
     alias lower down_case
     alias lowercase down_case
     alias lower_case down_case

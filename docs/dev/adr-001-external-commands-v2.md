@@ -1,6 +1,6 @@
 # ADR-001: External Command Execution (v2)
 
-**Status:** Draft
+**Status:** Accepted
 **Date:** 2025-12-13
 **Supersedes:** adr-001-external-commands.md (original draft)
 

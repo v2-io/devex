@@ -9,13 +9,22 @@ module Devex
   # This module provides the primary interface for running external commands
   # from devex tools. All methods handle the environment stack automatically:
   #
-  #   dotenv → mise → bundle → command
+  #   [dotenv] [mise exec --] [bundle exec] command
   #
   # This means `run "rspec"` automatically:
-  # - Loads .env if present (TODO)
-  # - Activates mise versions (TODO)
-  # - Runs through bundle exec if appropriate
+  # - Activates mise versions if .mise.toml or .tool-versions present
+  # - Runs through bundle exec if Gemfile present and command looks like a gem
   # - Cleans RUBYOPT/BUNDLE_* from devex's own bundler context
+  #
+  # Dotenv requires explicit opt-in:
+  #   run "rspec", dotenv: true
+  #
+  # Wrapper control:
+  #   run "rspec"                 # auto-detect mise and bundle
+  #   run "rspec", mise: false    # skip mise wrapping
+  #   run "rspec", bundle: false  # skip bundle exec
+  #   run "rspec", raw: true      # skip all wrappers
+  #   run "rspec", dotenv: true   # explicitly enable dotenv
   #
   # See ADR-001-external-commands-v2.md for full specification.
   #
@@ -45,8 +54,10 @@ module Devex
     # @param cmd [Array<String>] Command and arguments
     # @param env [Hash] Additional environment variables
     # @param chdir [String, Path] Working directory
-    # @param raw [Boolean] Skip environment stack entirely
+    # @param raw [Boolean] Skip environment stack entirely (no wrappers)
     # @param bundle [Symbol, Boolean] :auto (default), true, or false
+    # @param mise [Symbol, Boolean] :auto (default), true, or false
+    # @param dotenv [Boolean] false (default), true to enable dotenv wrapper
     # @param clean_env [Boolean] Clean devex's bundler pollution (default: true)
     # @param timeout [Float, nil] Seconds before killing
     # @param out [Symbol] :inherit (default), :capture, :null
@@ -479,6 +490,14 @@ module Devex
       }
     end
 
+    # Apply the environment wrapper chain in order:
+    #   [dotenv] [mise exec --] [bundle exec] command
+    #
+    # Each wrapper is applied from inside-out, so we process:
+    #   1. bundle exec (innermost, around the command)
+    #   2. mise exec -- (wraps bundle exec)
+    #   3. dotenv (outermost wrapper)
+    #
     def apply_environment_stack(env, cmd, opts)
       # Clean devex's bundler pollution (default: true unless clean_env: false)
       if opts.fetch(:clean_env, true) && defined?(Bundler)
@@ -490,8 +509,15 @@ module Devex
         cmd = maybe_bundle_exec(cmd, opts)
       end
 
-      # TODO: dotenv loading
-      # TODO: mise activation
+      # Mise exec wrapping (if detected, unless disabled)
+      unless opts[:shell]
+        cmd = maybe_mise_exec(cmd, opts)
+      end
+
+      # Dotenv wrapping (explicit opt-in only)
+      if opts[:dotenv] == true
+        cmd = with_dotenv(cmd, opts)
+      end
 
       [env, cmd]
     end
@@ -557,6 +583,72 @@ module Devex
       # Check if it's in bundle's bin stubs
       # This is a simplification; could check actual Gemfile.lock
       false
+    end
+
+    # ─────────────────────────────────────────────────────────────
+    # Mise Wrapper
+    # ─────────────────────────────────────────────────────────────
+
+    # Wrap command with `mise exec --` if mise is detected and enabled.
+    #
+    # @param cmd [Array<String>] Command to potentially wrap
+    # @param opts [Hash] Options (mise: :auto, true, or false)
+    # @return [Array<String>] Command, possibly wrapped
+    #
+    def maybe_mise_exec(cmd, opts)
+      return cmd if opts[:mise] == false
+      return cmd if cmd.first == "mise"
+
+      # :auto (default) - detect; true - always use mise
+      use_mise = case opts[:mise]
+                 when true then true
+                 when false then false
+                 else mise_detected?  # :auto or nil
+                 end
+
+      return cmd unless use_mise
+
+      # Wrap with mise exec --
+      ["mise", "exec", "--", *cmd]
+    end
+
+    # Check if mise is configured in the project.
+    # Caches the result for the process lifetime.
+    #
+    def mise_detected?
+      # Use :unset sentinel since nil is a valid cache value
+      @mise_detected = detect_mise_files if @mise_detected.nil?
+      @mise_detected
+    end
+
+    def detect_mise_files
+      # Check in current directory first
+      return true if File.exist?(".mise.toml") || File.exist?(".tool-versions")
+
+      # Check in project root if we're in a project
+      if defined?(Devex::Dirs) && Devex::Dirs.in_project?
+        project_dir = Devex::Dirs.project_dir.to_s
+        File.exist?(File.join(project_dir, ".mise.toml")) ||
+          File.exist?(File.join(project_dir, ".tool-versions"))
+      else
+        false
+      end
+    end
+
+    # ─────────────────────────────────────────────────────────────
+    # Dotenv Wrapper
+    # ─────────────────────────────────────────────────────────────
+
+    # Wrap command with `dotenv` to load .env files.
+    # Only used when explicitly requested (dotenv: true).
+    #
+    # @param cmd [Array<String>] Command to wrap
+    # @param opts [Hash] Options (unused currently, for future .env path override)
+    # @return [Array<String>] Command wrapped with dotenv
+    #
+    def with_dotenv(cmd, _opts)
+      # The dotenv CLI loads .env and then executes the remaining args
+      ["dotenv", *cmd]
     end
   end
 end

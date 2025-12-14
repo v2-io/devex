@@ -271,6 +271,183 @@ class ExecTest < Minitest::Test
   end
 
   # ─────────────────────────────────────────────────────────────
+  # Mise Wrapper
+  # ─────────────────────────────────────────────────────────────
+
+  def test_mise_forced_on_wraps_command
+    # Test mise: true explicitly wraps, regardless of detection
+    Dir.mktmpdir do |tmpdir|
+      # Capture the actual command that would be run by checking the result object
+      # The prepare_command method sets up the command array
+      helper = ExecHelper.new
+
+      # Test internal behavior by checking what prepare_command returns
+      env, cmd = helper.send(:apply_environment_stack, {}, %w[echo hello], { mise: true })
+      assert_equal "mise", cmd[0]
+      assert_equal "exec", cmd[1]
+      assert_equal "--", cmd[2]
+      assert_equal "echo", cmd[3]
+      assert_equal "hello", cmd[4]
+    end
+  end
+
+  def test_mise_forced_off_skips_wrapper
+    # Test mise: false skips wrapping even if detected
+    Dir.mktmpdir do |tmpdir|
+      File.write(File.join(tmpdir, ".mise.toml"), "")
+      Dir.chdir(tmpdir) do
+        helper = ExecHelper.new
+        helper.instance_variable_set(:@mise_detected, nil) # Clear cache
+
+        env, cmd = helper.send(:apply_environment_stack, {}, %w[echo hello], { mise: false })
+        assert_equal %w[echo hello], cmd
+      end
+    end
+  end
+
+  def test_mise_auto_detects_mise_toml
+    Dir.mktmpdir do |tmpdir|
+      File.write(File.join(tmpdir, ".mise.toml"), "")
+      Dir.chdir(tmpdir) do
+        helper = ExecHelper.new
+        helper.instance_variable_set(:@mise_detected, nil) # Clear cache
+
+        assert helper.send(:mise_detected?)
+      end
+    end
+  end
+
+  def test_mise_auto_detects_tool_versions
+    Dir.mktmpdir do |tmpdir|
+      File.write(File.join(tmpdir, ".tool-versions"), "ruby 3.3.0")
+      Dir.chdir(tmpdir) do
+        helper = ExecHelper.new
+        helper.instance_variable_set(:@mise_detected, nil) # Clear cache
+
+        assert helper.send(:mise_detected?)
+      end
+    end
+  end
+
+  def test_mise_not_detected_without_files
+    Dir.mktmpdir do |tmpdir|
+      Dir.chdir(tmpdir) do
+        helper = ExecHelper.new
+        helper.instance_variable_set(:@mise_detected, nil) # Clear cache
+
+        refute helper.send(:mise_detected?)
+      end
+    end
+  end
+
+  def test_mise_auto_wraps_when_detected
+    Dir.mktmpdir do |tmpdir|
+      File.write(File.join(tmpdir, ".mise.toml"), "")
+      Dir.chdir(tmpdir) do
+        helper = ExecHelper.new
+        helper.instance_variable_set(:@mise_detected, nil) # Clear cache
+
+        env, cmd = helper.send(:apply_environment_stack, {}, %w[echo hello], {})
+        assert_equal "mise", cmd[0]
+        assert_equal "exec", cmd[1]
+        assert_equal "--", cmd[2]
+      end
+    end
+  end
+
+  def test_mise_skips_self_wrapping
+    # Don't wrap `mise` command with `mise exec --`
+    helper = ExecHelper.new
+    env, cmd = helper.send(:apply_environment_stack, {}, %w[mise install], { mise: true })
+    # Should remain unchanged (no mise exec -- mise ...)
+    assert_equal %w[mise install], cmd
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # Dotenv Wrapper
+  # ─────────────────────────────────────────────────────────────
+
+  def test_dotenv_off_by_default
+    helper = ExecHelper.new
+    env, cmd = helper.send(:apply_environment_stack, {}, %w[echo hello], {})
+    # No dotenv wrapper by default
+    refute_equal "dotenv", cmd[0]
+  end
+
+  def test_dotenv_on_when_explicit
+    helper = ExecHelper.new
+    env, cmd = helper.send(:apply_environment_stack, {}, %w[echo hello], { dotenv: true })
+    assert_equal "dotenv", cmd[0]
+    assert_equal "echo", cmd[1]
+    assert_equal "hello", cmd[2]
+  end
+
+  def test_dotenv_false_has_no_effect
+    helper = ExecHelper.new
+    env, cmd = helper.send(:apply_environment_stack, {}, %w[echo hello], { dotenv: false })
+    refute_equal "dotenv", cmd[0]
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # Wrapper Chain Order
+  # ─────────────────────────────────────────────────────────────
+
+  def test_full_wrapper_chain
+    # Test order: dotenv → mise exec -- → bundle exec → command
+    Dir.mktmpdir do |tmpdir|
+      File.write(File.join(tmpdir, ".mise.toml"), "")
+      File.write(File.join(tmpdir, "Gemfile"), "")
+      Dir.chdir(tmpdir) do
+        helper = ExecHelper.new
+        helper.instance_variable_set(:@mise_detected, nil)
+        helper.instance_variable_set(:@gemfile_present, nil)
+
+        env, cmd = helper.send(:apply_environment_stack, {},
+                               %w[rspec], { dotenv: true, bundle: true, mise: true })
+
+        # Expected order: dotenv mise exec -- bundle exec rspec
+        assert_equal %w[dotenv mise exec -- bundle exec rspec], cmd
+      end
+    end
+  end
+
+  def test_mise_and_bundle_without_dotenv
+    Dir.mktmpdir do |tmpdir|
+      File.write(File.join(tmpdir, ".mise.toml"), "")
+      File.write(File.join(tmpdir, "Gemfile"), "")
+      Dir.chdir(tmpdir) do
+        helper = ExecHelper.new
+        helper.instance_variable_set(:@mise_detected, nil)
+        helper.instance_variable_set(:@gemfile_present, nil)
+
+        env, cmd = helper.send(:apply_environment_stack, {},
+                               %w[rspec], { bundle: true, mise: true })
+
+        # Expected: mise exec -- bundle exec rspec
+        assert_equal %w[mise exec -- bundle exec rspec], cmd
+      end
+    end
+  end
+
+  def test_raw_skips_all_wrappers
+    # raw: true should skip bundle, mise, and dotenv
+    Dir.mktmpdir do |tmpdir|
+      File.write(File.join(tmpdir, ".mise.toml"), "")
+      File.write(File.join(tmpdir, "Gemfile"), "")
+      Dir.chdir(tmpdir) do
+        helper = ExecHelper.new
+        helper.instance_variable_set(:@mise_detected, nil)
+        helper.instance_variable_set(:@gemfile_present, nil)
+
+        # raw: true causes prepare_command to skip apply_environment_stack entirely
+        # We verify the original command is preserved
+        result = dx_capture("echo", "raw", raw: true)
+        assert_equal %w[echo raw], result.command
+      end
+    end
+  end
+
+  # ─────────────────────────────────────────────────────────────
   # Result Chaining
   # ─────────────────────────────────────────────────────────────
 

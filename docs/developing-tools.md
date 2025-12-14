@@ -292,10 +292,59 @@ run "command",
   env: { KEY: "value" },    # Additional environment variables
   chdir: "subdir/",         # Working directory
   timeout: 30,              # Seconds before killing
-  raw: true,                # Skip environment stack
+  raw: true,                # Skip all environment wrappers
   bundle: false,            # Skip bundle exec wrapping
+  mise: false,              # Skip mise exec wrapping
+  dotenv: true,             # Enable dotenv wrapper (explicit opt-in)
   clean_env: true           # Clean bundler pollution (default)
 ```
+
+### Environment Wrapper Chain
+
+When running commands, devex automatically applies a wrapper chain:
+
+```
+[dotenv] [mise exec --] [bundle exec] your-command
+```
+
+| Wrapper | When Applied | Default |
+|---------|--------------|---------|
+| `dotenv` | Explicit opt-in only | OFF |
+| `mise exec --` | Auto if `.mise.toml` or `.tool-versions` exists | AUTO |
+| `bundle exec` | Auto if `Gemfile` exists and command looks like a gem | AUTO |
+
+**Examples:**
+
+```ruby
+# Just runs: echo hello
+run "echo", "hello"
+
+# Auto-detected Gemfile, runs: bundle exec rspec
+run "rspec"
+
+# Auto-detected .mise.toml, runs: mise exec -- bundle exec rspec
+run "rspec"
+
+# Explicit dotenv, runs: dotenv mise exec -- bundle exec rspec
+run "rspec", dotenv: true
+
+# Skip mise wrapping: bundle exec rspec
+run "rspec", mise: false
+
+# Skip all wrappers: rspec
+run "rspec", raw: true
+
+# Force mise even if not detected: mise exec -- echo hello
+run "echo", "hello", mise: true
+
+# Force bundle exec even for non-gem commands: bundle exec custom-script
+run "custom-script", bundle: true
+```
+
+**Gem commands that trigger `bundle exec`:**
+`rake`, `rspec`, `rubocop`, `standardrb`, `steep`, `rbs`, `rails`, `sidekiq`, `puma`, `unicorn`, `thin`, `bundler`, `bundle`, `erb`, `rdoc`, `ri`, `yard`
+
+**Note:** The `dotenv` option requires the `dotenv` CLI to be installed (`gem install dotenv`). It loads `.env` files before running the command.
 
 ---
 

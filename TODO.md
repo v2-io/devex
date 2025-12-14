@@ -73,18 +73,19 @@ File: `lib/devex/support/core_ext.rb`
 
 ---
 
-## Priority 4: ADR-001 External Commands (Deferred)
+## Priority 4: ADR-001 External Commands
 
-### [ ] dotenv loading
-- Load `.env` files automatically before command execution
-- ADR shows it in the environment stack: dotenv → mise → bundle → command
-- Consider using simple parser vs dotenv gem dependency
+### [x] dotenv wrapper (DONE)
+- Wraps commands with `dotenv` CLI when `dotenv: true` option passed
+- Explicit opt-in only (not automatic)
+- File: `lib/devex/exec.rb`
 
-### [ ] mise activation
-- Activate mise versions before command execution
-- Either shell out to `mise` or read `.mise.toml` directly
+### [x] mise wrapper (DONE)
+- Auto-wraps commands with `mise exec --` when `.mise.toml` or `.tool-versions` exists
+- Can force with `mise: true` or disable with `mise: false`
+- File: `lib/devex/exec.rb`
 
-### [ ] Progressive Ctrl-C handling
+### [ ] Progressive Ctrl-C handling (deferred)
 - 1st Ctrl-C: Forward SIGINT to child, keep waiting
 - 2nd Ctrl-C: Send SIGTERM, short grace period
 - 3rd Ctrl-C: Send SIGKILL, return immediately
@@ -102,25 +103,27 @@ run("build", result_callback: ->(r) { r.success? ? deploy : rollback })
 
 ## Documentation Updates Needed
 
-### [ ] Update ADR status markers
-- ADR-001: Draft → Accepted (core complete, some features deferred)
-- ADR-002: Draft → Accepted (core complete, case transforms pending)
-- ADR-003: Draft → Accepted (core complete, flags pending)
+### [x] Update ADR status markers (DONE)
+- ADR-001: Draft → Accepted
+- ADR-002: Draft → Accepted
+- ADR-003: Draft → Accepted
 
-### [ ] Update developing-tools.md
-- Remove references to dotenv/mise (not implemented yet)
-- Or mark them as "coming soon"
+### [x] Update developing-tools.md (DONE)
+- Documented environment wrapper chain
+- Added mise/dotenv options and examples
 
 ---
 
 ## Test Coverage Gaps
 
-| Area | Gap |
-|------|-----|
-| `exec.rb` | No tests for `tool`/`tool?` methods |
-| `core_ext.rb` | No tests for case transforms (not implemented) |
-| `cli.rb` | No tests for `--dx-from-dir` (not implemented) |
-| `dirs.rb` | No tests for `.dx-use-local` delegation |
+| Area | Status |
+|------|--------|
+| `exec.rb` | ✓ Tests for `tool`/`tool?` methods added |
+| `exec.rb` | ✓ Tests for mise wrapper added |
+| `exec.rb` | ✓ Tests for dotenv wrapper added |
+| `core_ext.rb` | ✓ Tests for case transforms added |
+| `cli.rb` | (parsing is tested indirectly) |
+| `dirs.rb` | (delegation tested elsewhere) |
 
 ---
 
@@ -136,12 +139,12 @@ run("build", result_callback: ->(r) { r.success? ? deploy : rollback })
 7. `up_case` / `down_case` - trivial wrappers
 8. All aliases
 
-### Title Case Minor Words
+### Title Case Minor Words (implemented)
 ```ruby
 TITLE_CASE_MINOR = %w[
   a an the
   for and nor but or yet so
   at by in to of on up as
-  is it if
 ].freeze
 ```
+Note: "is", "it", "if" are NOT minor words (verb, pronoun, conjunction respectively).

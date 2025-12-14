@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    devex (0.1.0)
+    devex (0.2.0)
       tty-prompt (~> 0.23)
 
 GEM

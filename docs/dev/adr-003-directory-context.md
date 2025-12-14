@@ -1,6 +1,6 @@
 # ADR-003: Directory Context Model
 
-**Status:** Draft
+**Status:** Accepted
 **Date:** 2025-12-13
 **Related:** ADR-001 (External Command Execution)
 
