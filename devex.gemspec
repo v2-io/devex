@@ -21,8 +21,6 @@ Gem::Specification.new do |spec|
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.3.0"
 
-  spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/v2-io/devex"
   spec.metadata["changelog_uri"] = "https://github.com/v2-io/devex/blob/main/CHANGELOG.md"
   spec.metadata["rubygems_mfa_required"] = "true"
 
@@ -40,7 +38,6 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  # Runtime dependencies
-  # Note: tty-prompt will be removed when we implement our own prompts
-  spec.add_dependency "tty-prompt", "~> 0.23"
+  # Runtime dependencies: none (zero-dependency core)
+  # tty-prompt may be added later for interactive prompts (dx config)
 end

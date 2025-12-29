@@ -2,6 +2,13 @@
 
 All notable changes to devex will be documented in this file.
 
+## [0.3.5] - 2025-12-29
+
+### Fixed
+- **Version detection fallback**: `dx version` now searches effective working directory when no project markers found, handling pre-git-init projects
+- **`--dx-from-dir` flag**: Now correctly affects project root discovery (was being ignored)
+- **Subtool helper methods**: Nested tools (`tool "name" do...end`) can now access helper methods defined in parent file (fixes `dx version bump` which was broken)
+
 ## [0.3.4] - 2025-12-13
 
 ### Added

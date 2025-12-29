@@ -266,6 +266,36 @@ dx --dx-terminal version        # Force terminal detection
 
 More built-ins planned: `types`, `pre-commit`, `init`
 
+## Building Custom CLIs with Devex::Core
+
+Devex exposes its CLI framework for building your own command-line tools:
+
+```ruby
+require "devex/core"
+
+config = Devex::Core::Configuration.new(
+  executable_name: "mycli",
+  flag_prefix: "mycli",              # --mycli-version, --mycli-agent-mode
+  project_markers: %w[.mycli.yml .git Gemfile],
+  env_prefix: "MYCLI"                # MYCLI_AGENT_MODE, MYCLI_ENV
+)
+
+cli = Devex::Core::CLI.new(config: config)
+cli.load_tools("/path/to/tools")
+exit cli.run(ARGV)
+```
+
+This gives you:
+- Tool routing with nested subcommands
+- Automatic help generation
+- Agent mode detection (adapts output for AI agents)
+- Environment detection (dev/test/staging/prod)
+- Command execution with environment wrappers
+- Project path conventions
+- Zero-dependency support library (Path, ANSI, CoreExt)
+
+See [docs/developing-tools.md](docs/developing-tools.md) for the full API.
+
 ## Development
 
 ```bash
@@ -281,4 +311,4 @@ bundle exec exe/dx --help
 
 ## License
 
-MIT
+MIT - see [LICENSE](LICENSE)
