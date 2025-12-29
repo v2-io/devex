@@ -40,7 +40,9 @@ cli = Devex::CLI.new(config: Devex::DX_CONFIG)
 cli.load_builtins
 
 # Find project root and load project tools
-project_root, _marker = Devex.find_project_root
+# Use from_dir if provided, otherwise search from current directory
+search_from = from_dir ? File.expand_path(from_dir) : Dir.pwd
+project_root, _marker = Devex.find_project_root(search_from)
 cli.load_project_tools(project_root) if project_root
 
 # Merge builtins (project takes precedence)

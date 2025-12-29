@@ -125,7 +125,12 @@ module Devex
           raise Error, "Tool '#{full_name}' has no run method"
         end
       elsif @source_proc
-        # For nested tools defined with blocks
+        # For nested tools defined with blocks.
+        # First eval the source file (if any) to define helper methods,
+        # then eval the block to define this subtool's run method.
+        if @source_file && File.exist?(@source_file)
+          context.instance_eval(File.read(@source_file), @source_file)
+        end
         context.instance_eval(&@source_proc)
         if context.respond_to?(:run)
           context.run

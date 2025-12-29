@@ -77,6 +77,9 @@ module Devex
         # and mark that it has a run method defined
         nested_context = DSLContext.new(subtool)
         nested_context.instance_eval(&block)
+        # Store source_file so the whole file is eval'd at runtime,
+        # making helper methods from the parent file available
+        subtool.source_file = block.source_location[0]
         subtool.source_proc = block
       end
       @tool.add_subtool(subtool)

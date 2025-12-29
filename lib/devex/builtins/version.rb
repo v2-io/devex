@@ -81,10 +81,20 @@ end
 desc "Show or manage version"
 
 def run
-  version_data = if cli.project_root
-                   version_file = find_version_file(cli.project_root)
-                   { version: read_version(version_file), source: "project", file: version_file } if version_file
-                 end
+  # Try project root first, then fall back to effective working directory.
+  # This handles cases where a project exists but isn't yet recognized
+  # (e.g., no .git, Gemfile, or other project markers).
+  fallback_dir = Devex::Dirs.dest_dir.to_s
+  search_roots = [cli.project_root, fallback_dir].compact.uniq
+
+  version_data = nil
+  search_roots.each do |root|
+    version_file = find_version_file(root)
+    if version_file
+      version_data = { version: read_version(version_file), source: "project", file: version_file }
+      break
+    end
+  end
 
   version_data ||= { version: Devex::VERSION, source: "devex" }
 
