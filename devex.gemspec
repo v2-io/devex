@@ -31,7 +31,7 @@ Gem::Specification.new do |spec|
     ls.readlines("\x0", chomp: true).reject do |f|
       (f == gemspec) ||
         f.start_with?(*%w[bin/ test/ spec/ features/ .git .archive/ docs/dev/ appveyor Gemfile]) ||
-        (f.end_with?(".md") && !f.include?("/") && f != "README.md")
+        (f.end_with?(".md") && !f.include?("/") && !%w[README.md CHANGELOG.md].include?(f))
     end
   end
   spec.bindir = "exe"
