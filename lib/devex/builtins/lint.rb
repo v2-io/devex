@@ -71,6 +71,8 @@ def run_rubocop_bundled
   warn "  Create .rubocop.yml to customize conventions."
   warn ""
 
+  check_bundled_config_dependencies
+
   args = ["rubocop", "--config", bundled_config.to_s]
   args << "-a" if fix && !unsafe
   args << "-A" if unsafe
@@ -96,4 +98,26 @@ def changed_files
   result.stdout_lines
         .select { |f| f.end_with?(".rb") }
         .select { |f| (prj.root / f).exist? }
+end
+
+def check_bundled_config_dependencies
+  missing = []
+  missing << "rubocop-minitest" unless gem_available?("rubocop-minitest")
+  missing << "rubocop-tablecop" unless gem_available?("rubocop-tablecop")
+
+  return if missing.empty?
+
+  warn "WARNING: Bundled config requires gems not in your Gemfile:"
+  missing.each { |gem| warn "  - #{gem}" }
+  warn ""
+  warn "Add to your Gemfile:"
+  missing.each { |gem| warn "  gem \"#{gem}\"" }
+  warn ""
+end
+
+def gem_available?(name)
+  Gem::Specification.find_by_name(name)
+  true
+rescue Gem::MissingSpecError
+  false
 end
