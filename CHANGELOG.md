@@ -2,6 +2,20 @@
 
 All notable changes to devex will be documented in this file.
 
+## [0.3.8] - 2026-05-19
+
+### Added
+- **Actionable LoadError hint in `CLI#run`.** When a project tool's
+  `require` fails AND the project has a Gemfile but no `.dx-use-local`
+  marker (and we aren't already inside a delegated re-exec), the bare
+  LoadError is surfaced AND a one-line actionable hint is appended
+  pointing at the existing `.dx-use-local` delegation affordance
+  (ADR-003). Purely additive: never swallows the underlying error,
+  never changes exit codes for the non-matching case. Resolves the
+  recurring confusion where a project tool that requires a bundle-only
+  path-gem (e.g. relata's `tools/docs.rb` → `chiridion`) raised a raw
+  12-line backtrace with no signal that the affordance exists.
+
 ## [0.3.5] - 2025-12-29
 
 ### Fixed

@@ -92,6 +92,20 @@ module Devex
       rescue OptionParser::ParseError => e
         Output.error(e.message)
         1
+      rescue LoadError => e
+        # Additive: surface the underlying LoadError cleanly, AND, only when
+        # the situation matches (in a project with a Gemfile but no
+        # delegation marker, and not already delegated), append an
+        # actionable hint pointing at the existing `.dx-use-local`
+        # affordance (ADR-003). Never swallows the real error — the hint
+        # is additional context. Without this, a project tool that
+        # requires a bundle-only path-gem (e.g. relata's tools/docs.rb →
+        # chiridion) raises a raw 12-line uncaught backtrace with no
+        # indication the dx-use-local mechanism exists.
+        Output.error(e.message)
+        hint = bundle_setup_hint(e)
+        warn hint if hint
+        1
       end
     end
 
@@ -335,6 +349,43 @@ module Devex
       else
         puts "#{@executable_name} #{VERSION}"
       end
+    end
+
+    # Diagnostic hint for the LoadError rescue (#run). Returns a string
+    # actionable for the user when a project tool's `require` failed
+    # *and* this project has a Gemfile but no delegation marker (and we
+    # aren't already inside a delegated re-exec). Returns nil when the
+    # situation doesn't match — the underlying error stands on its own.
+    #
+    # The matched situation is the exact one ADR-003's `.dx-use-local`
+    # solves: a global `dx` runs project `tools/*.rb` in-process, so a
+    # `require` of a bundle-only path-gem fails until the project opts
+    # into bundle delegation. Without this hint the failure mode is a
+    # raw 12-line LoadError backtrace with no signal that the
+    # affordance exists.
+    def bundle_setup_hint(error)
+      return nil unless @config.respond_to?(:delegation_file)
+
+      delegation_file = @config.delegation_file
+      return nil if delegation_file.nil? || delegation_file.empty?
+      return nil if ENV[@config.env_var(:delegated)] # already delegated; another problem
+
+      dirs = Dirs.new(config: @config)
+      return nil unless dirs.in_project?
+
+      project_dir = dirs.project_dir
+      return nil unless (project_dir / "Gemfile").exist?
+      return nil if (project_dir / delegation_file).exist?
+
+      gem_name = error.message[/cannot load such file -- (\S+)/, 1] || "the missing file"
+      <<~HINT.chomp
+        hint: '#{gem_name}' may be a project dev-dependency in this project's Gemfile.
+              The global `#{@executable_name}` runs project tools/*.rb in-process, OUTSIDE
+              the project's bundle, so a path-gem or bundle-only gem isn't on $LOAD_PATH.
+              To make `#{@executable_name}` re-exec under `bundle exec` for this project:
+                  touch #{delegation_file}
+              See devex ADR-003 for the delegation contract.
+      HINT
     end
   end
 end

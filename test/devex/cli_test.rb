@@ -182,4 +182,69 @@ class CLITest < Minitest::Test
     refute_includes help, "--dx-no-agent-mode"
     refute_includes help, "--dx-interactive"
   end
+
+  # --- LoadError diagnostic hint (additive; never swallows the error) ------
+  #
+  # See CHANGELOG 0.3.8. The hint fires only when the situation matches
+  # ADR-003's .dx-use-local affordance: in a project with a Gemfile but
+  # NO delegation marker and NOT already delegated. Otherwise nil (the
+  # bare LoadError stands on its own).
+
+  def with_project_dir(gemfile:, marker:)
+    Dir.mktmpdir do |tmp|
+      Dir.chdir(tmp) do
+        File.write("Gemfile", "source 'https://rubygems.org'") if gemfile
+        FileUtils.touch(".dx-use-local") if marker
+        yield tmp
+      end
+    end
+  end
+
+  def test_bundle_setup_hint_fires_when_situation_matches
+    cli = Devex::CLI.new(config: Devex::DX_CONFIG)
+    with_project_dir(gemfile: true, marker: false) do
+      hint = cli.send(:bundle_setup_hint, LoadError.new("cannot load such file -- chiridion"))
+      refute_nil hint
+      assert_includes hint, "chiridion"
+      assert_includes hint, ".dx-use-local"
+      assert_includes hint, "touch"
+    end
+  end
+
+  def test_bundle_setup_hint_nil_when_marker_already_present
+    cli = Devex::CLI.new(config: Devex::DX_CONFIG)
+    with_project_dir(gemfile: true, marker: true) do
+      assert_nil cli.send(:bundle_setup_hint, LoadError.new("cannot load such file -- chiridion")),
+                 "should not suggest creating the marker that already exists"
+    end
+  end
+
+  def test_bundle_setup_hint_nil_when_no_gemfile
+    cli = Devex::CLI.new(config: Devex::DX_CONFIG)
+    with_project_dir(gemfile: false, marker: false) do
+      assert_nil cli.send(:bundle_setup_hint, LoadError.new("cannot load such file -- chiridion")),
+                 "no Gemfile = not a bundle-using project; hint would be wrong"
+    end
+  end
+
+  def test_bundle_setup_hint_nil_when_already_delegated
+    cli = Devex::CLI.new(config: Devex::DX_CONFIG)
+    with_project_dir(gemfile: true, marker: false) do
+      ENV[Devex::DX_CONFIG.env_var(:delegated)] = "1"
+      begin
+        assert_nil cli.send(:bundle_setup_hint, LoadError.new("cannot load such file -- chiridion")),
+                   "already delegated = bundle IS active; the LoadError is a different problem"
+      ensure
+        ENV.delete(Devex::DX_CONFIG.env_var(:delegated))
+      end
+    end
+  end
+
+  def test_bundle_setup_hint_carries_missing_gem_name
+    cli = Devex::CLI.new(config: Devex::DX_CONFIG)
+    with_project_dir(gemfile: true, marker: false) do
+      hint = cli.send(:bundle_setup_hint, LoadError.new("cannot load such file -- some-other-gem"))
+      assert_includes hint, "some-other-gem", "hint must name the actually-missing gem, not a fixed string"
+    end
+  end
 end
