@@ -2,6 +2,33 @@
 
 All notable changes to devex will be documented in this file.
 
+## [0.3.9] - unreleased
+
+### Added
+- **Named version files.** A project with more than one version (a
+  specification and its implementation, say) can name further version files
+  in its dx config (`.dx.yml` or `.dx/config.yml`):
+
+  ```yaml
+  versions:
+    spec: VERSION.SPEC
+  ```
+
+  and address one by putting the name first: `dx version spec`,
+  `dx version spec bump pre`, `dx version spec set 2.0.0-beta.0`. Paths are
+  relative to the project root; a named file may be a bare version file or
+  Ruby source with a `VERSION = "…"` constant. `bump`, `set` and `help`
+  cannot be used as names.
+- The unnamed commands are unchanged and keep finding the default version
+  file by convention. One addition: `dx version` in a project that has named
+  versions but no default file lists the named versions, where it used to
+  fall through to printing devex's own version.
+
+### Fixed
+- `dx version <unknown word>` is now an error (exit 1). It used to ignore
+  the extra arguments and show the version, so a typo like
+  `dx version bmup patch` looked like success.
+
 ## [0.3.8] - 2026-11-20
 
 ### Fixed

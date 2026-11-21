@@ -196,6 +196,130 @@ class VersionBuiltinTest < Minitest::Test
   end
 
   # ─────────────────────────────────────────────────────────────
+  # Named version files (versions: in the dx config)
+  # ─────────────────────────────────────────────────────────────
+
+  def named_project(default: nil)
+    write(".dx.yml", "versions:\n  spec: VERSION.SPEC\n  impl: impl/version.rb\n")
+    write("VERSION.SPEC", "2.0.0-alpha.0\n")
+    write("impl/version.rb", %(VERSION = "0.1.0"\n))
+    write("VERSION", "#{default}\n") if default
+  end
+
+  def test_named_show
+    named_project
+    out, _, code = dx("version", "spec")
+    data = JSON.parse(out)
+
+    assert_equal 0, code
+    assert_equal "2.0.0-alpha.0", data["version"]
+    assert_equal "spec", data["name"]
+    assert data["file"].end_with?("VERSION.SPEC")
+  end
+
+  def test_named_bump_and_set_touch_only_the_named_file
+    named_project(default: "9.9.9")
+
+    out, _, code = dx("version", "spec", "bump", "pre")
+    assert_equal 0, code
+    assert_equal "2.0.0-alpha.1", JSON.parse(out)["new_version"]
+    assert_equal "2.0.0-alpha.1\n", content("VERSION.SPEC")
+
+    _, _, code = dx("version", "impl", "bump", "minor")
+    assert_equal 0, code
+    assert_equal %(VERSION = "0.2.0"\n), content("impl/version.rb")
+
+    _, _, code = dx("version", "spec", "set", "2.0.0-beta.0")
+    assert_equal 0, code
+    assert_equal "2.0.0-beta.0\n", content("VERSION.SPEC")
+
+    assert_equal "9.9.9\n", content("VERSION")
+  end
+
+  def test_unnamed_commands_keep_using_the_default_file
+    named_project(default: "1.0.0")
+
+    out, = dx("version")
+    assert_equal "1.0.0", JSON.parse(out)["version"]
+
+    dx("version", "bump", "patch")
+    assert_equal "1.0.1\n", content("VERSION")
+    assert_equal "2.0.0-alpha.0\n", content("VERSION.SPEC")
+  end
+
+  def test_show_without_default_file_lists_named_versions
+    named_project
+    out, _, code = dx("version")
+    data = JSON.parse(out)
+
+    assert_equal 0, code
+    assert_equal "project", data["source"]
+    assert_equal "2.0.0-alpha.0", data["versions"]["spec"]["version"]
+    assert_equal "0.1.0", data["versions"]["impl"]["version"]
+  end
+
+  def test_unnamed_bump_without_default_file_points_at_the_names
+    named_project
+    _, err, code = dx("version", "bump", "patch")
+
+    assert_equal 1, code
+    assert_match(/dx version <name>/, err)
+    assert_match(/spec/, err)
+  end
+
+  def test_named_refusals_change_nothing
+    named_project
+
+    [%w[spec bump patch], %w[spec bump], %w[spec frob], %w[spec set], %w[spec set nope],
+     %w[spec bump pre extra], %w[nope], %w[nope bump pre]].each do |args|
+      _, err, code = dx("version", *args)
+
+      assert_equal 1, code, "dx version #{args.join(' ')} should fail"
+      refute_empty err
+      assert_equal "2.0.0-alpha.0\n", content("VERSION.SPEC")
+    end
+  end
+
+  def test_named_file_missing_is_an_error
+    write(".dx.yml", "versions:\n  spec: VERSION.SPEC\n")
+    _, err, code = dx("version", "spec")
+
+    assert_equal 1, code
+    assert_match(/not found/, err)
+  end
+
+  def test_reserved_and_malformed_names_in_config_are_rejected
+    write("VERSION.SPEC", "1.0.0\n")
+
+    ["versions:\n  bump: VERSION.SPEC\n", "versions:\n  'a b': VERSION.SPEC\n",
+     "versions: VERSION.SPEC\n", "versions:\n  spec:\n"].each do |config|
+      write(".dx.yml", config)
+      _, err, code = dx("version", "spec")
+
+      assert_equal 1, code, "config #{config.inspect} should be rejected"
+      refute_empty err
+    end
+  end
+
+  def test_names_work_in_organized_mode_config
+    Dir.mkdir(File.join(@dir, ".dx"))
+    write(".dx/config.yml", "versions:\n  spec: VERSION.SPEC\n")
+    write("VERSION.SPEC", "1.0.0\n")
+    dx("version", "spec", "bump", "major")
+
+    assert_equal "2.0.0\n", content("VERSION.SPEC")
+  end
+
+  def test_unknown_word_after_version_is_an_error_not_a_show
+    write("VERSION", "1.0.0\n")
+    out, _, code = dx("version", "bmup", "patch")
+
+    assert_equal 1, code
+    assert_empty out
+    assert_equal "1.0.0\n", content("VERSION")
+  end
+
+  # ─────────────────────────────────────────────────────────────
   # A file we can't rewrite
   # ─────────────────────────────────────────────────────────────
 

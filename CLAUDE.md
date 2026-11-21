@@ -92,6 +92,7 @@ For dx specifically, use `require "devex"` which loads Core plus dx-specific con
 - `dx version` - Show project or devex version
 - `dx version bump <major|minor|patch|pre>` - Version bumping (`pre` increments a prerelease counter; anything a bump can't apply to is refused, never guessed)
 - `dx version set <version>` - Set explicit version (plain or prerelease, RubyGems or SemVer spelling)
+- `dx version <name> [bump <type> | set <version>]` - Same, on a version file named under `versions:` in `.dx.yml` / `.dx/config.yml` (the unnamed forms keep using the conventional default file)
 - `dx test` - Auto-detect and run test suite (minitest/RSpec)
 - `dx lint` - Run linter (RuboCop/StandardRB) with `--fix`, `--diff` options
 - `dx format` - Auto-format code (alias for `dx lint --fix`)

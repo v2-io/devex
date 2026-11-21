@@ -263,6 +263,22 @@ dx --dx-terminal version        # Force terminal detection
 
 The version lives in `lib/*/version.rb` (a `VERSION = "…"` constant), a bare `VERSION` file, or `version.rb`, looked for in that order. A bump that doesn't apply to the current version is refused with exit 1 and the file is left alone.
 
+A project with more than one version can name further version files in `.dx.yml` (or `.dx/config.yml`) and address them by name:
+
+```yaml
+# .dx.yml
+versions:
+  spec: VERSION.SPEC
+```
+
+```bash
+dx version spec                  # show
+dx version spec bump pre         # 2.0.0-alpha.0 → 2.0.0-alpha.1
+dx version spec set 2.0.0-beta.0
+```
+
+The unnamed commands keep working on the default file. If there is no default file, `dx version` lists the named versions.
+
 **Gem Packaging**
 - `dx gem build` - Build the gem
 - `dx gem install` - Build and install locally
