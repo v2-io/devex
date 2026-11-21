@@ -2,7 +2,7 @@
 
 All notable changes to devex will be documented in this file.
 
-## [0.3.9] - unreleased
+## [0.3.9] - 2026-11-20
 
 ### Added
 - **Named version files.** A project with more than one version (a
