@@ -525,9 +525,11 @@ class CoreExtTest < Minitest::Test
   end
 
   def test_stable_compact
-    result = { b: nil, a: { d: nil, c: 1 } }.stable_compact
-    # Should remove nils and sort keys
-    assert_equal({ "a" => { "c" => 1 } }.inspect, result.inspect.gsub(/:(\w+)=>/, '"\1"=>'))
+    result = { b: nil, z: 2, a: { d: nil, c: 1 } }.stable_compact
+    # Should remove nils (recursively) and sort keys. Compared structurally,
+    # not via #inspect: Hash#inspect's format changed in Ruby 3.4.
+    assert_equal({ a: { c: 1 }, z: 2 }, result)
+    assert_equal [:a, :z], result.keys
   end
 
   def test_to_sig
