@@ -2,7 +2,7 @@
 
 All notable changes to devex will be documented in this file.
 
-## [0.3.8] - unreleased
+## [0.3.8] - 2026-11-20
 
 ### Fixed
 - **`dx version bump` / `dx version set` now write a bare `VERSION` file.**
