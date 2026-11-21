@@ -33,8 +33,9 @@ dx help
 
 # Show/manage version
 dx version
-dx version bump patch
-dx version set 2.0.0
+dx version bump patch         # 1.2.3 → 1.2.4
+dx version bump pre           # 2.0.0-alpha.0 → 2.0.0-alpha.1
+dx version set 2.0.0-beta.0
 
 # With JSON output (auto-detected in agent mode)
 dx version --format=json
@@ -256,8 +257,11 @@ dx --dx-terminal version        # Force terminal detection
 
 **Version Management**
 - `dx version` - Show project version
-- `dx version bump <major|minor|patch>` - Bump semantic version
-- `dx version set <version>` - Set explicit version
+- `dx version bump <major|minor|patch>` - Bump a plain `MAJOR.MINOR.PATCH` version
+- `dx version bump pre` - Increment a prerelease counter (`2.0.0-alpha.0` → `2.0.0-alpha.1`, or RubyGems-style `2.0.0.alpha.0`)
+- `dx version set <version>` - Set explicit version, including prereleases; the way to change stage or release
+
+The version lives in `lib/*/version.rb` (a `VERSION = "…"` constant), a bare `VERSION` file, or `version.rb`, looked for in that order. A bump that doesn't apply to the current version is refused with exit 1 and the file is left alone.
 
 **Gem Packaging**
 - `dx gem build` - Build the gem

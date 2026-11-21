@@ -2,9 +2,36 @@
 
 All notable changes to devex will be documented in this file.
 
-## [0.3.8] - 2026-05-19
+## [0.3.8] - unreleased
+
+### Fixed
+- **`dx version bump` / `dx version set` now write a bare `VERSION` file.**
+  Previously only a Ruby `VERSION = "…"` constant was rewritten; for a bare
+  file the command printed `old → new`, exited 0, and left the file
+  unchanged.
+- **A version command can no longer report a change it did not make.** The
+  new file content is checked before anything is written; if it would not
+  read back as the new version, nothing is written and the command exits 1.
+- **`dx version bump` refuses versions that are not plain
+  `MAJOR.MINOR.PATCH`** (exit 1, file untouched) instead of mangling them.
+  `2.0.0.pre` used to "bump" to `2.0.1.0`, and `1.2` to `0.0.1`. What a
+  bump should mean for a prerelease is a convention devex does not assume;
+  use `dx version set`.
+- **`dx version set` validates the whole string.** It accepts
+  `MAJOR.MINOR.PATCH` with an optional prerelease tail in RubyGems style
+  (`2.0.0.pre`) or SemVer style (`2.0.0-rc.1`, `+build`); `1.0.0garbage`
+  used to pass.
+- `test_stable_compact` no longer depends on `Hash#inspect`'s format, which
+  changed in Ruby 3.4 (the test had been failing since).
+- Rewriting a Ruby constant keeps the file's own quote style and spacing.
 
 ### Added
+- **`dx version bump pre`** increments the counter of a prerelease version,
+  in either spelling: `2.0.0-alpha.0` → `2.0.0-alpha.1`, `2.0.0.pre.1` →
+  `2.0.0.pre.2`. Refused when the version has no trailing prerelease
+  counter. Moving between stages, or releasing, is `dx version set`.
+
+### Added (2026-05-19)
 - **Actionable LoadError hint in `CLI#run`.** When a project tool's
   `require` fails AND the project has a Gemfile but no `.dx-use-local`
   marker (and we aren't already inside a delegated re-exec), the bare

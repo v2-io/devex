@@ -90,8 +90,8 @@ For dx specifically, use `require "devex"` which loads Core plus dx-specific con
 
 **Built-in commands:**
 - `dx version` - Show project or devex version
-- `dx version bump <major|minor|patch>` - Semantic version bumping
-- `dx version set <version>` - Set explicit version
+- `dx version bump <major|minor|patch|pre>` - Version bumping (`pre` increments a prerelease counter; anything a bump can't apply to is refused, never guessed)
+- `dx version set <version>` - Set explicit version (plain or prerelease, RubyGems or SemVer spelling)
 - `dx test` - Auto-detect and run test suite (minitest/RSpec)
 - `dx lint` - Run linter (RuboCop/StandardRB) with `--fix`, `--diff` options
 - `dx format` - Auto-format code (alias for `dx lint --fix`)
@@ -193,6 +193,8 @@ docs/
 test/devex/
 ├── context_test.rb     # Context detection tests
 ├── output_test.rb      # Output helper tests
+├── builtins/
+│   └── version_test.rb # dx version, end-to-end through exe/dx
 ├── dirs_test.rb        # Directory context tests
 ├── project_paths_test.rb
 ├── working_dir_test.rb
